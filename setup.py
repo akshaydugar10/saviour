@@ -8,6 +8,9 @@ and (optionally) pull a first batch of transactions. After this, just run:
 Then open http://localhost:5001 in your browser.
 """
 
+# Python 3.9 compatibility.
+from __future__ import annotations
+
 import getpass
 import imaplib
 import json

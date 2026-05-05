@@ -17,6 +17,11 @@ Patterns handled (try `parse_email(body)` to dispatch across all of them):
     parse_account_credited                 "has been successfully added to your account ending XX..."
 """
 
+# Required so `dict | None` etc. work on Python 3.9 (what macOS Xcode CLI Tools
+# ships). Makes all annotations lazy-evaluated strings — they don't need to be
+# actual types at runtime.
+from __future__ import annotations
+
 import re
 from datetime import datetime
 

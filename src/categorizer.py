@@ -13,6 +13,9 @@ Writes:
 Then prints a summary so you can see what fell into "Review" and tighten rules.
 """
 
+# Python 3.9 compatibility.
+from __future__ import annotations
+
 import json
 from collections import Counter, defaultdict
 from pathlib import Path

@@ -9,6 +9,9 @@ Reads:
   config/categories.json   category list (used to populate the dropdown)
 """
 
+# Python 3.9 compatibility.
+from __future__ import annotations
+
 import hashlib
 import json
 from collections import defaultdict

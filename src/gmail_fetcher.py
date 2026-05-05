@@ -10,6 +10,9 @@ Date window:
     SAVIOUR_SINCE=01-Mar-2026 SAVIOUR_BEFORE=01-Jun-2026 python3 src/gmail_fetcher.py
 """
 
+# Python 3.9 compatibility (macOS Xcode CLI Tools ships 3.9).
+from __future__ import annotations
+
 import imaplib
 import email
 import json
