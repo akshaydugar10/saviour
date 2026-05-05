@@ -1,0 +1,6 @@
+# Netlify build config — tells Netlify which folder to publish.
+# The landing/ folder is the only thing that gets served at gosaviour.netlify.app.
+# Everything else (src/, config/, etc.) is for the local Python app.
+
+[build]
+  publish = "landing"
