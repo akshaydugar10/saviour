@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Saviour — {{ month_label }}</title>
+    <style>
+        /* ---- base ---- */
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            margin: 0;
+            padding: 0 0 60px 0;
+            line-height: 1.5;
+        }
+        .page-content {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        h1 { font-weight: 600; margin: 0; font-size: 22px; }
+        h2 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+            letter-spacing: -0.01em;
+        }
+        .subtle { color: #6e6e73; font-size: 13px; }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        /* ---- sticky top bar ---- */
+        .sticky-top {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid #e5e5ea;
+            z-index: 10;
+            margin-bottom: 24px;
+        }
+        .sticky-top .page-content {
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .sticky-top .account-label { color: #6e6e73; font-size: 13px; }
+        .sticky-top select {
+            padding: 4px 8px;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            background: white;
+            font-size: 13px;
+        }
+        .sync-form { margin-left: auto; }
+        .sync-btn {
+            padding: 6px 14px;
+            border: 1px solid #1565c0;
+            background: #1565c0;
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .sync-btn:hover { background: #0d47a1; border-color: #0d47a1; }
+        .sync-btn:disabled {
+            background: #c0c0c4;
+            color: white;
+            border-color: #c0c0c4;
+            cursor: wait;
+        }
+
+        /* ---- banner ---- */
+        .banner {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 0 0 20px 0;
+            font-size: 14px;
+        }
+        .banner-ok  { background: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
+        .banner-err { background: #ffebee; color: #b71c1c; border: 1px solid #ffcdd2; }
+
+        /* ---- card ---- */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .card.hero {
+            background: linear-gradient(135deg, #fff8e1, #fff3c4);
+            padding: 24px 28px;
+        }
+        .hero .num {
+            font-size: 36px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+        .hero .num small {
+            font-size: 16px;
+            color: #6e6e73;
+            font-weight: 400;
+        }
+        .bar-wrap {
+            background: rgba(0,0,0,0.08);
+            border-radius: 4px;
+            height: 10px;
+            margin-top: 14px;
+            overflow: hidden;
+        }
+        .bar {
+            background: {% if pct < 80 %}#34c759{% elif pct < 100 %}#ff9500{% else %}#ff3b30{% endif %};
+            height: 100%;
+            width: {{ pct if pct < 100 else 100 }}%;
+            transition: width 0.3s;
+        }
+
+        /* ---- tables ---- */
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            text-align: left;
+            padding: 8px 6px;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        th {
+            color: #6e6e73;
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid #e5e5ea;
+        }
+        td { border-bottom: 1px solid #f2f2f5; }
+        tr:last-child td { border-bottom: none; }
+        td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        tbody tr:hover td { background: #fafafa; }
+
+        /* ---- pills ---- */
+        .pill {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #f0f0f0;
+            color: #555;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* ---- buttons ---- */
+        button {
+            padding: 5px 12px;
+            border: 1px solid #d2d2d7;
+            background: white;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        button:hover { background: #f5f5f7; }
+        button.reject { color: #c62828; border-color: #f4cccc; }
+        button.reject:hover { background: #ffebee; }
+        button.undo { color: #1565c0; border-color: #b3d4fc; }
+        button.undo:hover { background: #e3f2fd; }
+
+        input[type="text"], select {
+            padding: 5px 10px;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .bulk-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 0 0 12px 0;
+            padding: 10px 12px;
+            background: #f5f5f7;
+            border-radius: 8px;
+        }
+        .bulk-bar input[type="text"] { width: 200px; }
+
+        /* ---- by-category drilldown ---- */
+        .cat-table .cat-summary { cursor: pointer; }
+        .cat-table .caret {
+            color: #aaa;
+            font-size: 9px;
+            margin-right: 6px;
+            display: inline-block;
+            transition: transform 0.1s;
+        }
+        .cat-table .cat-summary.open .caret { transform: rotate(90deg); color: #555; }
+        .cat-table .cat-detail td {
+            padding: 0;
+            background: #f8f8fa;
+            border-bottom: 1px solid #e8e8ec;
+        }
+        .cat-table .drilldown {
+            width: calc(100% - 32px);
+            margin: 8px 16px;
+            background: white;
+            border-radius: 6px;
+        }
+        .cat-table .drilldown td, .cat-table .drilldown th {
+            padding: 6px 10px;
+            font-size: 13px;
+            border-bottom: 1px solid #f2f2f5;
+        }
+        .cat-table .drilldown tr:last-child td { border-bottom: none; }
+
+        /* ---- collapsible ---- */
+        details.collapsible > summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            list-style: none;
+            color: #1d1d1f;
+        }
+        details.collapsible > summary::-webkit-details-marker { display: none; }
+        details.collapsible > summary::before {
+            content: "▶";
+            color: #aaa;
+            font-size: 10px;
+            margin-right: 8px;
+        }
+        details.collapsible[open] > summary::before { content: "▼"; }
+        details.collapsible[open] > * { margin-top: 12px; }
+        details.collapsible[open] > summary { margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- ============ STICKY TOP BAR ============ -->
+    <div class="sticky-top">
+        <div class="page-content">
+            <h1>Saviour</h1>
+            <span class="account-label">{{ user_name }} · Joint {{ joint_account }} ·</span>
+            <form method="get" action="/" style="display:inline;">
+                <select name="month" onchange="this.form.submit()">
+                    {% for value, label in month_options %}
+                    <option value="{{ value }}" {% if value == selected_month %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <form method="post" action="/sync" class="sync-form" onsubmit="this.querySelector('button').textContent='⟳ Syncing…'; this.querySelector('button').disabled=true;">
+                <input type="hidden" name="from_month" value="{{ selected_month }}">
+                <button type="submit" class="sync-btn">⟳ Sync</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="page-content">
+
+        <!-- ============ SYNC BANNER ============ -->
+        {% if synced_new is not none %}
+        <div class="banner banner-ok">
+            Synced — <strong>{{ synced_new }}</strong> new transaction{{ "" if synced_new == "1" else "s" }} added
+            ({{ synced_dup }} already had).
+        </div>
+        {% elif sync_error %}
+        <div class="banner banner-err">
+            Sync failed: {{ sync_error }}
+        </div>
+        {% endif %}
+
+        <!-- ============ HERO ============ -->
+        <div class="card hero">
+            <div class="num">{{ total | inr }} <small>of {{ budget | inr }} budget</small></div>
+            <div class="bar-wrap"><div class="bar"></div></div>
+            <div class="subtle" style="margin-top:10px;">
+                {% if remaining >= 0 %}
+                    {{ remaining | inr }} remaining · {{ pct | round | int }}% used · {{ n_txns }} transactions
+                {% else %}
+                    Over budget by {{ (-remaining) | inr }} · {{ pct | round | int }}% · {{ n_txns }} transactions
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ============ BY CATEGORY ============ -->
+        <div class="card">
+            <h2>By category</h2>
+            <p class="subtle" style="margin: -4px 0 12px 0;">Click a row to see the transactions in that category.</p>
+            <table class="cat-table">
+                <tr>
+                    <th>Category</th>
+                    <th>Count</th>
+                    <th class="num">Amount</th>
+                </tr>
+                {% for cat, amt, count, txns in categories %}
+                <tr class="cat-summary" data-target="cat-{{ loop.index }}">
+                    <td><span class="caret">▶</span> <span class="pill" style="{{ cat | catcolor }}">{{ cat }}</span></td>
+                    <td>{{ count }}</td>
+                    <td class="num">{{ amt | inr }}</td>
+                </tr>
+                <tr class="cat-detail" id="cat-{{ loop.index }}" hidden>
+                    <td colspan="3">
+                        <table class="drilldown">
+                            <tr><th>Date</th><th>Counterparty</th><th class="num">Amount</th></tr>
+                            {% for t in txns %}
+                            <tr>
+                                <td>{{ t.date }}</td>
+                                <td>{{ t.counterparty }}</td>
+                                <td class="num">{{ t.amount | inr }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- ============ MATCHED PAIRS ============ -->
+        {% if matched_pairs %}
+        <div class="card">
+            <h2>Personal CC spends, compensated ({{ matched_pairs | length }})</h2>
+            <p class="subtle" style="margin: -4px 0 12px 0;">
+                Credit card spends paired with an inbound transfer to your
+                budgeted account within ±3 days, for the same (or rounded) amount.
+            </p>
+            <table>
+                <tr>
+                    <th>CC date</th>
+                    <th>Merchant</th>
+                    <th class="num">CC amount</th>
+                    <th>Transfer date</th>
+                    <th>From</th>
+                    <th class="num">Transfer amount</th>
+                </tr>
+                {% for p in matched_pairs %}
+                <tr>
+                    <td>{{ p.cc.date }}</td>
+                    <td>{{ p.cc.counterparty }}</td>
+                    <td class="num">{{ p.cc.amount | inr }}</td>
+                    <td>{{ p.transfer.date }}</td>
+                    <td><span class="pill">{{ p.from_name }}</span></td>
+                    <td class="num">{{ p.transfer.amount | inr }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- ============ TOP 10 ============ -->
+        <div class="card">
+            <h2>Top 10 expenses</h2>
+            <table>
+                <tr><th>Date</th><th>Counterparty</th><th>Category</th><th class="num">Amount</th></tr>
+                {% for t in top %}
+                <tr>
+                    <td>{{ t.date }}</td>
+                    <td>{{ t.counterparty }}</td>
+                    <td><span class="pill" style="{{ t.category | catcolor }}">{{ t.category }}</span></td>
+                    <td class="num">{{ t.amount | inr }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- ============ NEEDS REVIEW ============ -->
+        {% if review %}
+        <div class="card">
+            <h2>Needs review ({{ review | length }})</h2>
+            <p class="subtle" style="margin: -4px 0 12px 0;">
+                Tick rows, type any category (existing or new), then Save Selected.
+                Reject Selected excludes them from totals. For repeating merchants,
+                edit <code>config/categories.json</code> instead.
+            </p>
+            <form method="post" action="/categorize">
+                <input type="hidden" name="from_month" value="{{ selected_month }}">
+                <div class="bulk-bar">
+                    <input type="text" list="cat-list" name="category" placeholder="type any category…">
+                    <button type="submit" name="action" value="set">Save Selected</button>
+                    <button type="submit" name="action" value="reject" class="reject">Reject Selected</button>
+                </div>
+                <table>
+                    <tr>
+                        <th><input type="checkbox" id="select-all-review"></th>
+                        <th>Date</th><th>Counterparty</th><th class="num">Amount</th>
+                    </tr>
+                    {% for t in review %}
+                    <tr>
+                        <td><input type="checkbox" name="key" value="{{ t._key }}" class="row-check-review"></td>
+                        <td>{{ t.date }}</td>
+                        <td>{{ t.counterparty }}</td>
+                        <td class="num">{{ t.amount | inr }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </form>
+            <datalist id="cat-list">
+                {% for c in available_categories %}
+                <option value="{{ c }}">
+                {% endfor %}
+            </datalist>
+        </div>
+        {% endif %}
+
+        <!-- ============ REJECTED (collapsed) ============ -->
+        {% if rejected %}
+        <div class="card">
+            <details class="collapsible">
+                <summary>Rejected ({{ rejected | length }})</summary>
+                <p class="subtle">Excluded from spending totals. Tick and click Undo Selected to bring back.</p>
+                <form method="post" action="/categorize">
+                    <input type="hidden" name="from_month" value="{{ selected_month }}">
+                    <div class="bulk-bar">
+                        <button type="submit" name="action" value="undo" class="undo">Undo Selected</button>
+                    </div>
+                    <table>
+                        <tr>
+                            <th><input type="checkbox" id="select-all-rejected"></th>
+                            <th>Date</th><th>Counterparty</th><th class="num">Amount</th>
+                        </tr>
+                        {% for t in rejected %}
+                        <tr>
+                            <td><input type="checkbox" name="key" value="{{ t._key }}" class="row-check-rejected"></td>
+                            <td>{{ t.date }}</td>
+                            <td>{{ t.counterparty }}</td>
+                            <td class="num">{{ t.amount | inr }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </form>
+            </details>
+        </div>
+        {% endif %}
+
+        <!-- ============ RENAME (collapsed) ============ -->
+        <div class="card">
+            <details class="collapsible">
+                <summary>Rename a category</summary>
+                <p class="subtle">Updates every rule and any per-transaction overrides using that name.</p>
+                <form method="post" action="/rename-category" class="inline">
+                    <input type="hidden" name="from_month" value="{{ selected_month }}">
+                    <select name="old">
+                        {% for cat in available_categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                    <span style="margin: 0 4px;">→</span>
+                    <input type="text" name="new" placeholder="new name" style="width:160px">
+                    <button type="submit">Rename</button>
+                </form>
+            </details>
+        </div>
+
+    </div>
+
+    <script>
+        // Select-all checkboxes
+        function wireSelectAll(headerId, rowClass) {
+            const header = document.getElementById(headerId);
+            if (!header) return;
+            header.addEventListener("change", e => {
+                document.querySelectorAll("." + rowClass).forEach(cb => {
+                    cb.checked = e.target.checked;
+                });
+            });
+        }
+        wireSelectAll("select-all-review", "row-check-review");
+        wireSelectAll("select-all-rejected", "row-check-rejected");
+
+        // Click a category row to toggle its drilldown
+        document.querySelectorAll(".cat-summary").forEach(row => {
+            row.addEventListener("click", () => {
+                const detail = document.getElementById(row.dataset.target);
+                if (!detail) return;
+                if (detail.hidden) {
+                    detail.hidden = false;
+                    row.classList.add("open");
+                } else {
+                    detail.hidden = true;
+                    row.classList.remove("open");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

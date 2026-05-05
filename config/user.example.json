@@ -1,0 +1,8 @@
+{
+  "name": "Your Name",
+  "account_suffixes": ["1234", "5678"],
+  "card_suffixes": ["9999"],
+  "joint_account": "1234",
+  "monthly_budget": 100000,
+  "self_transfer_names": ["YOUR FULL NAME", "SPOUSE FULL NAME"]
+}
