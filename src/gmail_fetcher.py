@@ -192,6 +192,10 @@ def main(since: str | None = None, before: str | None = None) -> dict:
     since = since or SINCE
     before = before or BEFORE
 
+    # Ensure data/ exists before any write_text call below. Fresh installs
+    # don't have it because data/ is gitignored.
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
     conn = connect()
     print(f"Logged in to {os.environ['GMAIL_ADDRESS']}")
 

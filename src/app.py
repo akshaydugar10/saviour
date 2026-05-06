@@ -32,6 +32,10 @@ CONFIG_PATH = PROJECT_ROOT / "config" / "categories.json"
 USER_PATH = PROJECT_ROOT / "config" / "user.json"
 OVERRIDES_PATH = DATA_DIR / "overrides.json"
 
+# Make sure data/ exists at app startup. It's gitignored, so a fresh install
+# has no folder. Doing it here means save_overrides() and the first sync work.
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def load_user() -> dict:
     """Per-user config: name, accounts, budget, self-transfer names.
@@ -259,8 +263,11 @@ def dashboard():
     card_suffixes = user.get("card_suffixes", [])
     self_transfer_names = user.get("self_transfer_names", [])
 
-    # Load + categorize live (so edits to rules / overrides take effect on refresh)
-    txns = json.loads((DATA_DIR / "transactions.json").read_text())
+    # Load + categorize live (so edits to rules / overrides take effect on refresh).
+    # On a brand-new install, transactions.json doesn't exist yet — render an
+    # empty dashboard so the user can see the page and click ⟳ Sync from there.
+    txns_path = DATA_DIR / "transactions.json"
+    txns = json.loads(txns_path.read_text()) if txns_path.exists() else []
     make_keys(txns)
     migrate_overrides_to_rules(txns)
 

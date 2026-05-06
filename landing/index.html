@@ -350,8 +350,8 @@ GMAIL_APP_PASSWORD=${escapeForHeredoc(password)}
 ENVEOF
 chmod 600 .env
 
-# 4. Write user config
-mkdir -p config
+# 4. Write user config + create data dir for transactions
+mkdir -p config data
 cat > config/user.json << 'JSONEOF'
 ${escapeForHeredoc(userJson)}
 JSONEOF
