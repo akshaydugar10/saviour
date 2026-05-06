@@ -4,23 +4,117 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Saviour — Personal spend tracker</title>
+    <!-- Theme bootstrap — runs before paint to avoid a flash of the wrong theme -->
+    <script>
+        (function() {
+            const stored = localStorage.getItem("saviour_theme");
+            if (stored === "dark" || stored === "light") {
+                document.documentElement.setAttribute("data-theme", stored);
+            } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+                document.documentElement.setAttribute("data-theme", "dark");
+            }
+        })();
+    </script>
     <style>
+        /* ============ THEME TOKENS ============ */
+        :root {
+            color-scheme: light dark;
+            --bg-page:        #f5f5f7;
+            --bg-card:        #ffffff;
+            --bg-input:       #ffffff;
+            --bg-soft:        #f5f5f7;
+            --bg-hover:       rgba(0,0,0,0.04);
+            --bg-hero:        linear-gradient(135deg, #fff8e1, #fff3c4);
+            --bg-benefit:     rgba(255,255,255,0.7);
+
+            --text-primary:   #1d1d1f;
+            --text-secondary: #515154;
+            --text-tertiary:  #6e6e73;
+            --text-on-accent: #ffffff;
+
+            --border:         #d2d2d7;
+            --border-soft:    #e5e5ea;
+
+            --accent:         #007aff;
+            --accent-hover:   #0066d6;
+            --accent-soft:    rgba(0,122,255,0.12);
+
+            --success:        #30d158;
+            --success-bg:     rgba(48,209,88,0.12);
+            --success-border: rgba(48,209,88,0.3);
+            --warning:        #ff9f0a;
+            --warning-bg:     #fff8e1;
+            --warning-fg:     #6d4c00;
+            --warning-border: #ffe082;
+
+            --pre-bg:         #1d1d1f;
+            --pre-fg:         #f5f5f7;
+
+            --shadow-sm:      0 1px 3px rgba(0,0,0,0.04);
+            --topbar-bg:      rgba(255,255,255,0.72);
+        }
+        [data-theme="dark"] {
+            --bg-page:        #000000;
+            --bg-card:        #1c1c1e;
+            --bg-input:       #1c1c1e;
+            --bg-soft:        #2c2c2e;
+            --bg-hover:       rgba(255,255,255,0.06);
+            --bg-hero:        linear-gradient(135deg, #2a2418, #3a3120);
+            --bg-benefit:     rgba(255,255,255,0.06);
+
+            --text-primary:   #f5f5f7;
+            --text-secondary: #c7c7cc;
+            --text-tertiary:  #98989d;
+            --text-on-accent: #ffffff;
+
+            --border:         #38383a;
+            --border-soft:    #2c2c2e;
+
+            --accent:         #0a84ff;
+            --accent-hover:   #409cff;
+            --accent-soft:    rgba(10,132,255,0.18);
+
+            --success:        #32d74b;
+            --success-bg:     rgba(50,215,75,0.16);
+            --success-border: rgba(50,215,75,0.35);
+            --warning:        #ff9f0a;
+            --warning-bg:     #3a2e10;
+            --warning-fg:     #ffd54a;
+            --warning-border: #5a4515;
+
+            --pre-bg:         #2c2c2e;
+            --pre-fg:         #f5f5f7;
+
+            --shadow-sm:      0 1px 3px rgba(0,0,0,0.4);
+            --topbar-bg:      rgba(28,28,30,0.72);
+        }
+
+        /* ============ BASE ============ */
         * { box-sizing: border-box; }
+        html, body {
+            background: var(--bg-page);
+            color: var(--text-primary);
+        }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #f5f5f7;
-            color: #1d1d1f;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            font-feature-settings: "kern", "liga";
             margin: 0;
             padding: 0 0 80px 0;
             line-height: 1.55;
+            transition: background-color 0.15s, color 0.15s;
         }
 
-        /* ---- top bar with progress ---- */
+        /* ============ TOPBAR (Apple-style frosted) ============ */
         .topbar {
             position: sticky;
             top: 0;
-            background: white;
-            border-bottom: 1px solid #e5e5ea;
+            background: var(--topbar-bg);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 1px solid var(--border-soft);
             z-index: 10;
         }
         .topbar-content {
@@ -46,42 +140,61 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: #e5e5ea;
-            transition: background 0.2s;
+            background: var(--border-soft);
+            transition: background-color 0.2s;
         }
-        .dot.active { background: #1565c0; }
-        .dot.done { background: #2e7d32; }
+        .dot.active { background: var(--accent); }
+        .dot.done { background: var(--success); }
         .progress-text {
             margin-left: 8px;
-            color: #6e6e73;
+            color: var(--text-tertiary);
             font-size: 13px;
             font-variant-numeric: tabular-nums;
         }
+        .theme-toggle {
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            line-height: 1;
+            font-family: inherit;
+            transition: background-color 0.15s;
+        }
+        .theme-toggle:hover { background: var(--bg-hover); }
+        .theme-icon-dark  { display: none; }
+        [data-theme="dark"] .theme-icon-light { display: none; }
+        [data-theme="dark"] .theme-icon-dark  { display: inline; }
 
-        /* ---- page + stages ---- */
+        /* ============ PAGE + STAGES ============ */
         .page { max-width: 640px; margin: 0 auto; padding: 32px 20px; }
         .stage { display: none; animation: fadeIn 0.3s; }
         .stage.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-        h1 { font-size: 30px; font-weight: 700; margin: 0 0 12px 0; letter-spacing: -0.02em; line-height: 1.2; }
-        h2 { font-size: 22px; font-weight: 600; margin: 0 0 10px 0; letter-spacing: -0.01em; }
-        h3 { font-size: 14px; font-weight: 600; margin: 18px 0 6px 0; color: #515154; }
-        p { margin: 0 0 14px 0; }
-        .lead { font-size: 17px; color: #515154; margin-bottom: 24px; }
-        .help { font-size: 13px; color: #6e6e73; margin: 4px 0 0 0; }
+        h1 { font-size: 30px; font-weight: 700; margin: 0 0 12px 0; letter-spacing: -0.02em; line-height: 1.2; color: var(--text-primary); }
+        h2 { font-size: 22px; font-weight: 600; margin: 0 0 10px 0; letter-spacing: -0.01em; color: var(--text-primary); }
+        h3 { font-size: 14px; font-weight: 600; margin: 18px 0 6px 0; color: var(--text-secondary); }
+        p { margin: 0 0 14px 0; color: var(--text-primary); }
+        .lead { font-size: 17px; color: var(--text-secondary); margin-bottom: 24px; }
+        .help { font-size: 13px; color: var(--text-tertiary); margin: 4px 0 0 0; }
 
-        /* ---- card ---- */
+        /* ============ CARD ============ */
         .card {
-            background: white;
-            border-radius: 14px;
+            background: var(--bg-card);
+            border-radius: 16px;
             padding: 28px 30px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-soft);
         }
+        [data-theme="dark"] .card { border-color: transparent; }
         .card.hero {
-            background: linear-gradient(135deg, #fff8e1, #fff3c4);
+            background: var(--bg-hero);
             padding: 36px 32px;
         }
+        [data-theme="dark"] .card.hero { border: 1px solid #3a3120; }
         .hero-emoji {
             font-size: 48px;
             margin-bottom: 4px;
@@ -97,34 +210,36 @@
             font-size: 14px;
         }
         .benefits li {
-            background: rgba(255,255,255,0.7);
-            border-radius: 8px;
+            background: var(--bg-benefit);
+            border-radius: 10px;
             padding: 8px 14px;
             font-weight: 500;
+            color: var(--text-primary);
         }
 
-        /* ---- inputs ---- */
+        /* ============ INPUTS ============ */
         label {
             display: block;
             font-size: 14px;
             font-weight: 500;
-            color: #1d1d1f;
+            color: var(--text-primary);
             margin: 16px 0 6px 0;
         }
         input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea {
             width: 100%;
             padding: 11px 14px;
-            border: 1px solid #d2d2d7;
+            border: 1px solid var(--border);
             border-radius: 10px;
             font-size: 15px;
             font-family: inherit;
-            background: white;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
         }
         input:focus, textarea:focus {
             outline: none;
-            border-color: #1565c0;
-            box-shadow: 0 0 0 3px rgba(21,101,192,0.12);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
         }
         textarea {
             min-height: 70px;
@@ -133,7 +248,7 @@
             font-size: 14px;
         }
 
-        /* ---- buttons ---- */
+        /* ============ BUTTONS ============ */
         .btn-primary, .btn-secondary {
             border-radius: 10px;
             padding: 12px 22px;
@@ -144,20 +259,21 @@
             text-decoration: none;
             display: inline-block;
             border: 1px solid transparent;
+            transition: background-color 0.15s, border-color 0.15s;
         }
         .btn-primary {
-            background: #1565c0;
-            color: white;
-            border-color: #1565c0;
+            background: var(--accent);
+            color: var(--text-on-accent);
+            border-color: var(--accent);
         }
-        .btn-primary:hover { background: #0d47a1; border-color: #0d47a1; }
+        .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
         .btn-primary.big { padding: 14px 32px; font-size: 16px; }
         .btn-secondary {
-            background: white;
-            color: #1565c0;
-            border-color: #1565c0;
+            background: var(--bg-card);
+            color: var(--accent);
+            border-color: var(--accent);
         }
-        .btn-secondary:hover { background: #e3f2fd; }
+        .btn-secondary:hover { background: var(--accent-soft); }
 
         .actions {
             display: flex;
@@ -166,15 +282,14 @@
         }
         .actions .btn-primary { margin-left: auto; }
 
-        /* ---- ordered list with subtle styling ---- */
         ol.steps { margin: 0 0 16px 18px; padding: 0; }
-        ol.steps li { margin: 6px 0; }
+        ol.steps li { margin: 6px 0; color: var(--text-primary); }
 
-        /* ---- terminal command box + copy ---- */
+        /* ============ TERMINAL COMMAND BOX ============ */
         pre {
-            background: #1d1d1f;
-            color: #f5f5f7;
-            border-radius: 8px;
+            background: var(--pre-bg);
+            color: var(--pre-fg);
+            border-radius: 10px;
             padding: 14px 16px;
             font-size: 13px;
             font-family: ui-monospace, "SF Mono", Consolas, monospace;
@@ -186,30 +301,32 @@
         .copy-row { display: flex; gap: 8px; align-items: stretch; margin: 4px 0 6px 0; }
         .copy-btn {
             padding: 0 14px;
-            background: #1565c0;
-            color: white;
+            background: var(--accent);
+            color: var(--text-on-accent);
             border: none;
             border-radius: 8px;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
+            font-family: inherit;
         }
-        .copy-btn:hover { background: #0d47a1; }
+        .copy-btn:hover { background: var(--accent-hover); }
 
-        /* ---- privacy callout ---- */
+        /* ============ CALLOUTS ============ */
         .privacy {
-            background: #e8f5e9;
-            color: #1b5e20;
-            border: 1px solid #c8e6c9;
+            background: var(--success-bg);
+            color: var(--success);
+            border: 1px solid var(--success-border);
             border-radius: 10px;
             padding: 12px 14px;
             font-size: 13px;
             margin-top: 18px;
         }
+        [data-theme="dark"] .privacy { color: #5fdf7a; }
         .warn {
-            background: #fff8e1;
-            color: #6d4c00;
-            border: 1px solid #ffe082;
+            background: var(--warning-bg);
+            color: var(--warning-fg);
+            border: 1px solid var(--warning-border);
             border-radius: 10px;
             padding: 10px 14px;
             font-size: 13px;
@@ -233,6 +350,10 @@
             <span class="dot" data-step="4"></span>
             <span class="progress-text" id="progress-text">Step 1 of 5</span>
         </div>
+        <button type="button" id="theme-toggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle theme">
+            <span class="theme-icon-light">☀️</span>
+            <span class="theme-icon-dark">🌙</span>
+        </button>
     </div>
 </header>
 
@@ -384,6 +505,14 @@
 </main>
 
 <script>
+    // ============ THEME TOGGLE ============
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const current = document.documentElement.getAttribute("data-theme") || "light";
+        const next = current === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("saviour_theme", next);
+    });
+
     // ============ STAGE NAVIGATION ============
     let currentStage = 0;
     const TOTAL_STAGES = 5;

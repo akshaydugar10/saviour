@@ -75,11 +75,12 @@ app.jinja_env.filters["inr"] = format_inr
 
 
 def category_color(cat: str) -> str:
-    """Deterministic pastel color for a category pill. Same name -> same color
-    every render. Returns inline CSS for `style=""`.
+    """Deterministic hue for a category pill. Emits a CSS custom property
+    only — the actual saturation/lightness is set by stylesheet rules so
+    the same pill looks right in both light and dark mode.
     """
     h = int(hashlib.md5(cat.encode("utf-8")).hexdigest()[:4], 16) % 360
-    return f"background: hsl({h}, 60%, 92%); color: hsl({h}, 40%, 28%);"
+    return f"--cat-hue: {h};"
 
 
 app.jinja_env.filters["catcolor"] = category_color
