@@ -14,296 +14,450 @@
             padding: 0 0 80px 0;
             line-height: 1.55;
         }
-        .page { max-width: 720px; margin: 0 auto; padding: 40px 20px; }
 
-        h1 { font-size: 32px; font-weight: 700; margin: 0 0 8px 0; letter-spacing: -0.02em; }
-        h2 { font-size: 18px; font-weight: 600; margin: 0 0 12px 0; }
-        h3 { font-size: 15px; font-weight: 600; margin: 16px 0 6px 0; color: #515154; }
-        p { margin: 6px 0 12px 0; }
-        .lead { font-size: 17px; color: #515154; margin-bottom: 32px; }
+        /* ---- top bar with progress ---- */
+        .topbar {
+            position: sticky;
+            top: 0;
+            background: white;
+            border-bottom: 1px solid #e5e5ea;
+            z-index: 10;
+        }
+        .topbar-content {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .brand {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+        .progress {
+            display: flex;
+            gap: 6px;
+            margin-left: auto;
+            align-items: center;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #e5e5ea;
+            transition: background 0.2s;
+        }
+        .dot.active { background: #1565c0; }
+        .dot.done { background: #2e7d32; }
+        .progress-text {
+            margin-left: 8px;
+            color: #6e6e73;
+            font-size: 13px;
+            font-variant-numeric: tabular-nums;
+        }
 
+        /* ---- page + stages ---- */
+        .page { max-width: 640px; margin: 0 auto; padding: 32px 20px; }
+        .stage { display: none; animation: fadeIn 0.3s; }
+        .stage.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        h1 { font-size: 30px; font-weight: 700; margin: 0 0 12px 0; letter-spacing: -0.02em; line-height: 1.2; }
+        h2 { font-size: 22px; font-weight: 600; margin: 0 0 10px 0; letter-spacing: -0.01em; }
+        h3 { font-size: 14px; font-weight: 600; margin: 18px 0 6px 0; color: #515154; }
+        p { margin: 0 0 14px 0; }
+        .lead { font-size: 17px; color: #515154; margin-bottom: 24px; }
+        .help { font-size: 13px; color: #6e6e73; margin: 4px 0 0 0; }
+
+        /* ---- card ---- */
         .card {
             background: white;
-            border-radius: 12px;
-            padding: 24px 28px;
-            margin-bottom: 16px;
+            border-radius: 14px;
+            padding: 28px 30px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .card.hero {
             background: linear-gradient(135deg, #fff8e1, #fff3c4);
-            padding: 32px 28px;
+            padding: 36px 32px;
         }
-        .step-num {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            line-height: 24px;
-            text-align: center;
-            background: #1565c0;
-            color: white;
-            border-radius: 50%;
-            font-size: 13px;
-            font-weight: 600;
-            margin-right: 8px;
+        .hero-emoji {
+            font-size: 48px;
+            margin-bottom: 4px;
+            line-height: 1;
         }
-
-        .benefits { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-        .benefit {
+        .benefits {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 16px;
+            list-style: none;
+            margin: 18px 0 28px 0;
+            padding: 0;
+            font-size: 14px;
+        }
+        .benefits li {
             background: rgba(255,255,255,0.7);
             border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 13px;
+            padding: 8px 14px;
             font-weight: 500;
         }
 
+        /* ---- inputs ---- */
         label {
             display: block;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 500;
-            color: #515154;
-            margin: 12px 0 4px 0;
-        }
-        .help {
-            font-size: 12px;
-            color: #6e6e73;
-            margin: 2px 0 0 0;
+            color: #1d1d1f;
+            margin: 16px 0 6px 0;
         }
         input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea {
             width: 100%;
-            padding: 9px 12px;
+            padding: 11px 14px;
             border: 1px solid #d2d2d7;
-            border-radius: 8px;
-            font-size: 14px;
+            border-radius: 10px;
+            font-size: 15px;
             font-family: inherit;
             background: white;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
         input:focus, textarea:focus {
-            outline: 2px solid #1565c0;
-            outline-offset: -1px;
+            outline: none;
             border-color: #1565c0;
+            box-shadow: 0 0 0 3px rgba(21,101,192,0.12);
         }
-        textarea { min-height: 70px; resize: vertical; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+        textarea {
+            min-height: 70px;
+            resize: vertical;
+            font-family: ui-monospace, "SF Mono", Consolas, monospace;
+            font-size: 14px;
+        }
 
-        button.primary, a.primary {
-            background: #1565c0;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 24px;
+        /* ---- buttons ---- */
+        .btn-primary, .btn-secondary {
+            border-radius: 10px;
+            padding: 12px 22px;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            display: inline-block;
-            text-decoration: none;
             font-family: inherit;
-        }
-        button.primary:hover, a.primary:hover { background: #0d47a1; }
-        button.primary:disabled { background: #c0c0c4; cursor: not-allowed; }
-
-        a.secondary {
-            display: inline-block;
-            color: #1565c0;
             text-decoration: none;
-            border: 1px solid #1565c0;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 500;
+            display: inline-block;
+            border: 1px solid transparent;
         }
-        a.secondary:hover { background: #e3f2fd; }
+        .btn-primary {
+            background: #1565c0;
+            color: white;
+            border-color: #1565c0;
+        }
+        .btn-primary:hover { background: #0d47a1; border-color: #0d47a1; }
+        .btn-primary.big { padding: 14px 32px; font-size: 16px; }
+        .btn-secondary {
+            background: white;
+            color: #1565c0;
+            border-color: #1565c0;
+        }
+        .btn-secondary:hover { background: #e3f2fd; }
 
-        code, pre {
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 28px;
+        }
+        .actions .btn-primary { margin-left: auto; }
+
+        /* ---- ordered list with subtle styling ---- */
+        ol.steps { margin: 0 0 16px 18px; padding: 0; }
+        ol.steps li { margin: 6px 0; }
+
+        /* ---- terminal command box + copy ---- */
+        pre {
             background: #1d1d1f;
             color: #f5f5f7;
-            border-radius: 6px;
-            padding: 12px 14px;
+            border-radius: 8px;
+            padding: 14px 16px;
             font-size: 13px;
             font-family: ui-monospace, "SF Mono", Consolas, monospace;
-            display: block;
+            margin: 0;
             overflow-x: auto;
             user-select: all;
+            flex: 1;
         }
-        code.inline {
-            display: inline;
-            padding: 2px 6px;
-            font-size: 12px;
-        }
-
-        .privacy {
-            background: #e8f5e9;
-            color: #1b5e20;
-            border: 1px solid #c8e6c9;
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 13px;
-            margin-top: 12px;
-        }
-
-        #generated { display: none; }
-        .copy-row { display: flex; gap: 8px; align-items: stretch; }
-        .copy-row pre { flex: 1; margin: 0; }
+        .copy-row { display: flex; gap: 8px; align-items: stretch; margin: 4px 0 6px 0; }
         .copy-btn {
             padding: 0 14px;
             background: #1565c0;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
         }
         .copy-btn:hover { background: #0d47a1; }
+
+        /* ---- privacy callout ---- */
+        .privacy {
+            background: #e8f5e9;
+            color: #1b5e20;
+            border: 1px solid #c8e6c9;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 13px;
+            margin-top: 18px;
+        }
+        .warn {
+            background: #fff8e1;
+            color: #6d4c00;
+            border: 1px solid #ffe082;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-<div class="page">
 
-    <h1>Saviour</h1>
-    <p class="lead">A personal spend tracker that runs entirely on your Mac. Your data never leaves your machine.</p>
-
-    <!-- ============ HERO / PITCH ============ -->
-    <div class="card hero">
-        <h2>What it does</h2>
-        <p>Saviour reads HDFC transaction alerts from your Gmail, categorises them, and shows a clean monthly dashboard — total spent vs budget, where the money's going, top expenses, anything that needs review.</p>
-        <div class="benefits">
-            <div class="benefit">Privacy-first</div>
-            <div class="benefit">Free</div>
-            <div class="benefit">No cloud accounts</div>
-            <div class="benefit">~5 min to set up</div>
+<!-- ============ TOPBAR WITH PROGRESS ============ -->
+<header class="topbar">
+    <div class="topbar-content">
+        <div class="brand">Saviour 🪙</div>
+        <div class="progress" aria-label="Setup progress">
+            <span class="dot active" data-step="0"></span>
+            <span class="dot" data-step="1"></span>
+            <span class="dot" data-step="2"></span>
+            <span class="dot" data-step="3"></span>
+            <span class="dot" data-step="4"></span>
+            <span class="progress-text" id="progress-text">Step 1 of 5</span>
         </div>
     </div>
+</header>
 
-    <!-- ============ STEP 1: APP PASSWORD ============ -->
-    <div class="card">
-        <h2><span class="step-num">1</span>Get a Gmail app password</h2>
-        <p>Saviour reads your bank's transaction emails. To do that securely, Google gives you a one-time 16-character "app password" that's separate from your real Gmail password. You can revoke it any time.</p>
-        <h3>How to get one (~2 min):</h3>
-        <ol style="margin: 0 0 16px 18px; padding: 0;">
-            <li>Open the link below.</li>
-            <li>If 2-Step Verification isn't on yet, turn it on first (link will guide you).</li>
-            <li>Type <strong>Saviour</strong> as the app name, click Create.</li>
-            <li>Copy the 16-character password Google shows you.</li>
-        </ol>
-        <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" class="secondary">Open Google App Passwords →</a>
-    </div>
+<main class="page">
 
-    <!-- ============ STEP 2: YOUR DETAILS ============ -->
-    <div class="card">
-        <h2><span class="step-num">2</span>Your details</h2>
-        <p class="help">Everything below stays in your browser. Nothing is uploaded anywhere when you click Generate.</p>
+    <!-- ============ STAGE 0: WELCOME ============ -->
+    <section class="stage active" id="stage-0">
+        <div class="card hero">
+            <div class="hero-emoji">👋</div>
+            <h1>A personal spend tracker that runs on your Mac.</h1>
+            <p class="lead">Saviour reads your HDFC alerts from Gmail, categorises them, and shows where your money's going. Setup takes ~5 minutes.</p>
+            <ul class="benefits">
+                <li>🔒 Privacy-first</li>
+                <li>✨ Free</li>
+                <li>☁️ No cloud accounts</li>
+                <li>⏱️ ~5 min setup</li>
+            </ul>
+            <button onclick="goToStage(1)" class="btn-primary big">Start saving →</button>
+        </div>
+    </section>
 
-        <form id="setup-form" onsubmit="return generateInstaller(event)">
+    <!-- ============ STAGE 1: ABOUT YOU ============ -->
+    <section class="stage" id="stage-1">
+        <div class="card">
+            <h2>👤 Tell us about you</h2>
+            <p class="help">Your details stay on this page — nothing gets uploaded.</p>
+
             <label for="name">Your first name</label>
-            <input type="text" id="name" required placeholder="Alex">
+            <input type="text" id="name" placeholder="Alex">
 
             <label for="gmail">Your Gmail address</label>
-            <input type="email" id="gmail" required placeholder="you@gmail.com">
+            <input type="email" id="gmail" placeholder="you@gmail.com">
+            <p class="help">This should be the Gmail account that receives your HDFC bank alerts.</p>
 
-            <label for="password">Gmail app password (from Step 1)</label>
-            <input type="password" id="password" required placeholder="16 characters, paste here">
-            <p class="help">Spaces between groups are fine. We'll strip them out automatically.</p>
+            <div class="actions">
+                <button onclick="goToStage(0)" class="btn-secondary">← Back</button>
+                <button onclick="goToStage(2)" class="btn-primary">Continue →</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ STAGE 2: GMAIL APP PASSWORD ============ -->
+    <section class="stage" id="stage-2">
+        <div class="card">
+            <h2>🔑 Gmail app password</h2>
+            <p>Saviour reads your bank's transaction emails. To do that securely, Google issues a one-time 16-character "app password" — separate from your real Gmail password. You can revoke it any time.</p>
+
+            <h3>How to get one (~2 min):</h3>
+            <ol class="steps">
+                <li>Click the button below to open Google's page in a new tab.</li>
+                <li>If 2-Step Verification isn't on yet, turn it on first (Google guides you).</li>
+                <li>Type <strong>Saviour</strong> as the app name, click <strong>Create</strong>.</li>
+                <li>Copy the 16-character password Google shows you.</li>
+            </ol>
+
+            <p>
+                <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" class="btn-secondary">
+                    Open Google App Passwords →
+                </a>
+            </p>
+
+            <label for="password">Paste the 16-character password here</label>
+            <input type="password" id="password" placeholder="xxxx xxxx xxxx xxxx">
+            <p class="help">Spaces between groups are fine. We'll strip them.</p>
+
+            <div class="warn">
+                ⚠️ Make sure this app password is for the Gmail address you entered above — not a different Google account.
+            </div>
+
+            <div class="actions">
+                <button onclick="goToStage(1)" class="btn-secondary">← Back</button>
+                <button onclick="goToStage(3)" class="btn-primary">Continue →</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ STAGE 3: ACCOUNTS & BUDGET ============ -->
+    <section class="stage" id="stage-3">
+        <div class="card">
+            <h2>🏦 Your accounts &amp; budget</h2>
 
             <label for="accounts">Bank account suffixes</label>
-            <textarea id="accounts" required placeholder="1234&#10;5678"></textarea>
+            <textarea id="accounts" placeholder="1234&#10;5678" rows="3"></textarea>
             <p class="help">Just the last 4 digits, one per line. Find them on any HDFC alert email — e.g., "account 1234".</p>
 
             <label for="cards">Credit card suffixes (optional)</label>
-            <textarea id="cards" placeholder="9999"></textarea>
+            <textarea id="cards" placeholder="9999" rows="2"></textarea>
             <p class="help">Last 4 digits of any HDFC credit cards, one per line. Skip if none.</p>
 
-            <label for="joint">Which account is the budgeted one?</label>
-            <input type="text" id="joint" required placeholder="1234">
-            <p class="help">Pick one of the bank account suffixes above. The dashboard tracks this one against your monthly budget.</p>
+            <label for="budget">Monthly budget (₹)</label>
+            <input type="number" id="budget" min="1" placeholder="100000">
+            <p class="help">For the first account you listed above. The dashboard tracks against this.</p>
 
-            <label for="budget">Monthly budget for that account (₹)</label>
-            <input type="number" id="budget" required min="1" placeholder="100000">
-
-            <div style="margin-top: 24px;">
-                <button type="submit" class="primary">Generate installer</button>
+            <div class="actions">
+                <button onclick="goToStage(2)" class="btn-secondary">← Back</button>
+                <button onclick="goToStage(4)" class="btn-primary">Continue →</button>
             </div>
-        </form>
-
-        <div class="privacy" style="margin-top: 16px;">
-            <strong>Privacy:</strong> Clicking Generate runs JavaScript in your browser. Your Gmail address, app password, and account numbers never get sent to any server, including this one. The page just builds a script you'll run in your own Terminal.
         </div>
-    </div>
+    </section>
 
-    <!-- ============ STEP 3: GENERATED INSTALLER ============ -->
-    <div class="card" id="generated">
-        <h2><span class="step-num">3</span>Run the installer</h2>
-        <p>Open <strong>Terminal</strong> on your Mac (Cmd+Space → "Terminal" → Enter), then paste the command below and hit Enter. It will:</p>
-        <ul style="margin: 0 0 16px 18px;">
-            <li>Download Saviour to <code class="inline">~/saviour</code></li>
-            <li>Install the few Python packages it needs</li>
-            <li>Save your config (locally, on your Mac)</li>
-            <li>Pull your last 90 days of HDFC alerts and parse them</li>
-        </ul>
-        <p>Total time: ~3-5 minutes.</p>
+    <!-- ============ STAGE 4: GENERATE → DONE ============ -->
+    <section class="stage" id="stage-4">
 
-        <h3>Step A — download the installer:</h3>
-        <button id="download-btn" class="primary" onclick="downloadInstaller()">Download saviour-install.sh</button>
-
-        <h3>Step B — run it in Terminal:</h3>
-        <div class="copy-row">
-            <pre id="run-command">bash ~/Downloads/saviour-install.sh</pre>
-            <button class="copy-btn" onclick="copyToClipboard('run-command', this)">Copy</button>
+        <!-- Pre-generate state -->
+        <div class="card" id="generate-card">
+            <h2>✨ Almost there</h2>
+            <p>We'll create a personalised installer just for you. Everything happens in your browser — your details never get sent to any server, including this one.</p>
+            <div class="privacy">
+                🔒 <strong>Privacy:</strong> clicking Generate runs JavaScript locally. Your Gmail, password, and account numbers stay on this page.
+            </div>
+            <div class="actions">
+                <button onclick="goToStage(3)" class="btn-secondary">← Back</button>
+                <button onclick="generateInstaller()" class="btn-primary big">Generate installer ✨</button>
+            </div>
         </div>
 
-        <h3>Step C — open your dashboard:</h3>
-        <p>Once the installer says <em>"Saviour is installed!"</em>, run this in the same Terminal window:</p>
-        <div class="copy-row">
-            <pre id="open-command">cd ~/saviour && python3 src/app.py</pre>
-            <button class="copy-btn" onclick="copyToClipboard('open-command', this)">Copy</button>
+        <!-- Post-generate state -->
+        <div class="card hidden" id="done-card">
+            <div class="hero-emoji">🎉</div>
+            <h1>You're all set!</h1>
+            <p>Two terminal commands and you're done.</p>
+
+            <h3>Step A — download the installer</h3>
+            <button onclick="downloadInstaller()" class="btn-primary" id="download-btn">Download saviour-install.sh</button>
+
+            <h3>Step B — run it in Terminal</h3>
+            <p class="help">Open <strong>Terminal</strong> (Cmd+Space → "Terminal" → Enter), then paste:</p>
+            <div class="copy-row">
+                <pre id="run-command">bash ~/Downloads/saviour-install.sh</pre>
+                <button class="copy-btn" onclick="copyCmd('run-command', this)">Copy</button>
+            </div>
+            <p class="help">Takes 3-5 minutes the first time. The terminal will look frozen during pip install — that's fine, just let it run.</p>
+
+            <h3>Step C — open the dashboard</h3>
+            <p class="help">Once it says <em>"Saviour is installed!"</em>, run:</p>
+            <div class="copy-row">
+                <pre id="open-command">cd ~/saviour && python3 src/app.py</pre>
+                <button class="copy-btn" onclick="copyCmd('open-command', this)">Copy</button>
+            </div>
+            <p>Then visit <strong>http://localhost:5001</strong> in your browser.</p>
+
+            <div class="privacy" style="margin-top: 24px;">
+                📘 <strong>First-time tip:</strong> when the dashboard loads, a quick guided tour will walk you through the main features. You can replay it any time by clicking <strong>📘 Guide</strong> in the top bar.
+            </div>
         </div>
-        <p style="margin-top: 12px;">Then visit <strong>http://localhost:5001</strong> in your browser. You're done.</p>
 
-        <p class="help" style="margin-top: 20px;">
-            To open Saviour again on a future day, just run Step C — your data and config are saved.
-            The dashboard has a <strong>⟳ Sync</strong> button that pulls fresh transactions any time you click it.
-        </p>
-    </div>
+    </section>
 
-</div>
+</main>
 
 <script>
-    let generatedScript = null;
+    // ============ STAGE NAVIGATION ============
+    let currentStage = 0;
+    const TOTAL_STAGES = 5;
+
+    function goToStage(n) {
+        // Validate before going forward
+        if (n > currentStage && !validate(currentStage)) return;
+
+        document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
+        document.getElementById('stage-' + n).classList.add('active');
+        currentStage = n;
+        updateProgress();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateProgress() {
+        document.querySelectorAll('.dot').forEach(dot => {
+            const idx = parseInt(dot.dataset.step);
+            dot.classList.toggle('active', idx === currentStage);
+            dot.classList.toggle('done', idx < currentStage);
+        });
+        document.getElementById('progress-text').textContent =
+            'Step ' + (currentStage + 1) + ' of ' + TOTAL_STAGES;
+    }
+
+    function validate(stage) {
+        if (stage === 1) {
+            const name = document.getElementById('name').value.trim();
+            const gmail = document.getElementById('gmail').value.trim();
+            if (!name) { alert('Please enter your first name.'); return false; }
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gmail)) {
+                alert('Please enter a valid email address.');
+                return false;
+            }
+        }
+        if (stage === 2) {
+            const pw = document.getElementById('password').value.replace(/\s/g, '');
+            if (!pw) { alert('Please paste your Gmail app password.'); return false; }
+            if (pw.length < 14) {
+                if (!confirm('App passwords are usually 16 characters. Yours is ' + pw.length + '.\n\nContinue anyway?')) return false;
+            }
+        }
+        if (stage === 3) {
+            const accounts = lines(document.getElementById('accounts').value);
+            if (accounts.length === 0) { alert('Please enter at least one bank account suffix (last 4 digits).'); return false; }
+            const budget = parseInt(document.getElementById('budget').value, 10);
+            if (!budget || budget < 1) { alert('Please enter your monthly budget.'); return false; }
+        }
+        return true;
+    }
 
     function lines(value) {
         return value.split("\n").map(s => s.trim()).filter(Boolean);
     }
 
     function escapeForHeredoc(s) {
-        // Inside a 'EOF'-quoted heredoc, $, `, \ etc. are literal — nothing to escape.
-        // We just need to make sure the user's input doesn't contain the literal string "EOF" on its own line.
+        // Inside a 'EOF'-quoted heredoc, $ etc. are literal. Just guard against the user
+        // happening to type a line that's exactly "EOF".
         return s.replace(/^EOF$/gm, "EOF_");
     }
 
-    function generateInstaller(event) {
-        event.preventDefault();
+    // ============ INSTALLER GENERATION ============
+    let generatedScript = null;
 
-        const name = document.getElementById("name").value.trim();
-        const gmail = document.getElementById("gmail").value.trim();
-        const password = document.getElementById("password").value.replace(/\s/g, "");
-        const accounts = lines(document.getElementById("accounts").value);
-        const cards = lines(document.getElementById("cards").value);
-        const joint = document.getElementById("joint").value.trim();
-        const budget = parseInt(document.getElementById("budget").value, 10);
-        // Self-transfer names default to empty — user can configure later
-        // from the dashboard's Review section if their bank statements show
-        // transfers between their own accounts or to/from their spouse.
-        const names = [];
+    function generateInstaller() {
+        const name = document.getElementById('name').value.trim();
+        const gmail = document.getElementById('gmail').value.trim();
+        const password = document.getElementById('password').value.replace(/\s/g, '');
+        const accounts = lines(document.getElementById('accounts').value);
+        const cards = lines(document.getElementById('cards').value);
+        const budget = parseInt(document.getElementById('budget').value, 10);
 
-        if (!accounts.includes(joint)) {
-            alert("The budgeted account suffix must be one of the bank account suffixes you listed above.");
-            return false;
-        }
-        if (password.length !== 16) {
-            const proceed = confirm(
-                "App passwords are usually exactly 16 characters. Yours is " + password.length + ".\n\n" +
-                "Continue anyway?"
-            );
-            if (!proceed) return false;
-        }
+        // Joint account = first listed (user no longer picks)
+        const joint = accounts[0];
 
         const userJson = JSON.stringify({
             name: name,
@@ -311,7 +465,7 @@
             card_suffixes: cards,
             joint_account: joint,
             monthly_budget: budget,
-            self_transfer_names: names,
+            self_transfer_names: [],
         }, null, 2);
 
         const repoUrl = "https://github.com/akshaydugar10/saviour.git";
@@ -350,7 +504,7 @@ GMAIL_APP_PASSWORD=${escapeForHeredoc(password)}
 ENVEOF
 chmod 600 .env
 
-# 4. Write user config + create data dir for transactions
+# 4. Write user config + create data dir
 mkdir -p config data
 cat > config/user.json << 'JSONEOF'
 ${escapeForHeredoc(userJson)}
@@ -374,31 +528,31 @@ echo "    cd ~/saviour && python3 src/app.py"
 echo "Then visit http://localhost:5001 in your browser."
 `;
 
-        // Reveal step 3 + scroll to it
-        const out = document.getElementById("generated");
-        out.style.display = "block";
-        out.scrollIntoView({ behavior: "smooth", block: "start" });
-        return false;
+        // Swap pre-generate card for done card
+        document.getElementById('generate-card').classList.add('hidden');
+        document.getElementById('done-card').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function downloadInstaller() {
         if (!generatedScript) return;
-        const blob = new Blob([generatedScript], { type: "text/x-shellscript" });
+        const blob = new Blob([generatedScript], { type: 'text/x-shellscript' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
+        const a = document.createElement('a');
         a.href = url;
-        a.download = "saviour-install.sh";
+        a.download = 'saviour-install.sh';
         document.body.appendChild(a);
         a.click();
         a.remove();
-        URL.revokeObjectURL(url);
+        // Delay revoke so browsers that download asynchronously don't lose the URL
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    function copyToClipboard(elId, btn) {
+    function copyCmd(elId, btn) {
         const text = document.getElementById(elId).textContent;
         navigator.clipboard.writeText(text).then(() => {
             const orig = btn.textContent;
-            btn.textContent = "Copied!";
+            btn.textContent = '✓ Copied';
             setTimeout(() => { btn.textContent = orig; }, 1200);
         });
     }
