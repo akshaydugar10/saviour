@@ -59,7 +59,20 @@
             background: white;
             font-size: 13px;
         }
-        .sync-form { margin-left: auto; }
+        /* Guide button pushes right; sync follows it */
+        .guide-btn {
+            margin-left: auto;
+            padding: 6px 12px;
+            border: 1px solid #1565c0;
+            background: white;
+            color: #1565c0;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .guide-btn:hover { background: #e3f2fd; }
+        .sync-form { margin-left: 8px; }
         .sync-btn {
             padding: 6px 14px;
             border: 1px solid #1565c0;
@@ -236,6 +249,85 @@
         details.collapsible[open] > summary::before { content: "▼"; }
         details.collapsible[open] > * { margin-top: 12px; }
         details.collapsible[open] > summary { margin-bottom: 4px; }
+
+        /* ============ TUTORIAL TOUR ============ */
+        .tour-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 9000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .tour-active .tour-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        /* Lift the sticky topbar above the backdrop while tutorial is active */
+        .tour-active .sticky-top { z-index: 9001; }
+        .tour-target {
+            position: relative;
+            z-index: 9002 !important;
+            box-shadow:
+                0 0 0 4px white,
+                0 0 0 6px #1565c0,
+                0 8px 32px rgba(0, 0, 0, 0.35);
+            border-radius: 12px;
+            transition: box-shadow 0.2s;
+        }
+        .tour-tooltip {
+            position: fixed;
+            z-index: 9003;
+            background: white;
+            border-radius: 12px;
+            padding: 20px 22px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            max-width: 360px;
+            line-height: 1.5;
+            display: none;
+        }
+        .tour-active .tour-tooltip { display: block; }
+        .tour-tooltip h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .tour-tooltip p {
+            margin: 0 0 14px 0;
+            font-size: 14px;
+            color: #3a3a3c;
+        }
+        .tour-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tour-step-counter {
+            color: #8e8e93;
+            font-size: 12px;
+            margin-right: auto;
+        }
+        .tour-btn {
+            padding: 6px 14px;
+            border: 1px solid #d2d2d7;
+            background: white;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .tour-btn:hover { background: #f5f5f7; }
+        .tour-btn.primary {
+            background: #1565c0;
+            color: white;
+            border-color: #1565c0;
+        }
+        .tour-btn.primary:hover { background: #0d47a1; }
+        .tour-btn.skip {
+            color: #6e6e73;
+            border-color: transparent;
+        }
     </style>
 </head>
 <body>
@@ -252,6 +344,7 @@
                     {% endfor %}
                 </select>
             </form>
+            <button type="button" id="guide-btn" class="guide-btn" title="Replay the tour">📘 Guide</button>
             <form method="post" action="/sync" class="sync-form" onsubmit="this.querySelector('button').textContent='⟳ Syncing…'; this.querySelector('button').disabled=true;">
                 <input type="hidden" name="from_month" value="{{ selected_month }}">
                 <button type="submit" class="sync-btn">⟳ Sync</button>
@@ -287,7 +380,7 @@
         </div>
 
         <!-- ============ BY CATEGORY ============ -->
-        <div class="card">
+        <div class="card card-categories">
             <h2>By category</h2>
             <p class="subtle" style="margin: -4px 0 12px 0;">Click a row to see the transactions in that category.</p>
             <table class="cat-table">
@@ -369,7 +462,7 @@
 
         <!-- ============ NEEDS REVIEW ============ -->
         {% if review %}
-        <div class="card">
+        <div class="card card-review">
             <h2>Needs review ({{ review | length }})</h2>
             <p class="subtle" style="margin: -4px 0 12px 0;">
                 Tick rows, type any category (existing or new), then Save Selected.
@@ -485,6 +578,167 @@
                 }
             });
         });
+    </script>
+
+    <!-- ============ TUTORIAL TOUR OVERLAY ============ -->
+    <div class="tour-backdrop" id="tour-backdrop"></div>
+    <div class="tour-tooltip" id="tour-tooltip" role="dialog" aria-live="polite">
+        <h3 id="tour-title"></h3>
+        <p id="tour-body"></p>
+        <div class="tour-controls">
+            <span class="tour-step-counter" id="tour-counter"></span>
+            <button type="button" class="tour-btn skip" id="tour-skip">Skip</button>
+            <button type="button" class="tour-btn" id="tour-prev">Back</button>
+            <button type="button" class="tour-btn primary" id="tour-next">Next</button>
+        </div>
+    </div>
+
+    <script>
+        // ============ TUTORIAL TOUR ============
+        // Steps run in order. `selector` = null means tooltip is centered on screen.
+        // `optional: true` means the step is skipped if the target is missing.
+        const TOUR_STEPS = [
+            {
+                selector: null,
+                title: "👋 Welcome to Saviour",
+                body: "This dashboard shows where your money's going each month. Quick tour, takes ~30 seconds.",
+            },
+            {
+                selector: ".card.hero",
+                title: "Your monthly budget",
+                body: "The bar fills as you spend. Green is healthy, orange means you're getting close, red means over budget.",
+                placement: "below",
+            },
+            {
+                selector: ".sticky-top select[name='month']",
+                title: "Switch months",
+                body: "Pick any month you've been tracking to see its breakdown.",
+                placement: "below",
+            },
+            {
+                selector: ".sync-btn",
+                title: "Pull fresh data",
+                body: "Click ⟳ Sync to grab the latest HDFC transactions from your Gmail. Takes ~5 seconds.",
+                placement: "below",
+            },
+            {
+                selector: ".card-categories",
+                title: "Where your money goes",
+                body: "Categories ranked by spend. Click any row to see the individual transactions inside.",
+                placement: "above",
+            },
+            {
+                selector: ".card-review",
+                title: "Untagged transactions",
+                body: "Tick rows, type a category, click Save Selected. Saviour learns the rule and applies it to all matching past + future transactions automatically.",
+                placement: "above",
+                optional: true,
+            },
+            {
+                selector: "#guide-btn",
+                title: "🎉 You're all set",
+                body: "Click 📘 Guide here to replay this tour any time.",
+                placement: "below",
+            },
+        ];
+
+        const TOUR_KEY = "saviour_tutorial_seen";
+        const tooltip = document.getElementById("tour-tooltip");
+        const titleEl = document.getElementById("tour-title");
+        const bodyEl = document.getElementById("tour-body");
+        const counterEl = document.getElementById("tour-counter");
+        const prevBtn = document.getElementById("tour-prev");
+        const nextBtn = document.getElementById("tour-next");
+        const skipBtn = document.getElementById("tour-skip");
+        let tourIndex = 0;
+        let visibleSteps = [];
+
+        function clearTourTarget() {
+            document.querySelectorAll(".tour-target").forEach(el => el.classList.remove("tour-target"));
+        }
+
+        function positionTooltip(step) {
+            if (!step.selector) {
+                tooltip.style.top = "50%";
+                tooltip.style.left = "50%";
+                tooltip.style.right = "";
+                tooltip.style.bottom = "";
+                tooltip.style.transform = "translate(-50%, -50%)";
+                return;
+            }
+            const target = document.querySelector(step.selector);
+            if (!target) return;
+            target.classList.add("tour-target");
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+            // Wait for scroll to settle, then place tooltip
+            setTimeout(() => {
+                const r = target.getBoundingClientRect();
+                tooltip.style.transform = "";
+                tooltip.style.right = "";
+                tooltip.style.bottom = "";
+                const margin = 16;
+                if (step.placement === "above") {
+                    tooltip.style.top = "";
+                    tooltip.style.bottom = (window.innerHeight - r.top + margin) + "px";
+                } else {
+                    // default: below
+                    tooltip.style.top = (r.bottom + margin) + "px";
+                    tooltip.style.bottom = "";
+                }
+                // Horizontal: try to align with target's left, but keep on screen
+                const tipWidth = 360;
+                let left = Math.max(20, r.left);
+                if (left + tipWidth > window.innerWidth - 20) {
+                    left = window.innerWidth - tipWidth - 20;
+                }
+                tooltip.style.left = left + "px";
+            }, 320);
+        }
+
+        function renderTour() {
+            clearTourTarget();
+            const step = visibleSteps[tourIndex];
+            if (!step) { endTour(); return; }
+            titleEl.textContent = step.title;
+            bodyEl.textContent = step.body;
+            counterEl.textContent = `${tourIndex + 1} of ${visibleSteps.length}`;
+            prevBtn.style.visibility = tourIndex === 0 ? "hidden" : "visible";
+            nextBtn.textContent = tourIndex === visibleSteps.length - 1 ? "Done" : "Next";
+            positionTooltip(step);
+        }
+
+        function startTour() {
+            // Filter optional steps whose targets don't exist
+            visibleSteps = TOUR_STEPS.filter(s => {
+                if (!s.optional || !s.selector) return true;
+                return document.querySelector(s.selector) != null;
+            });
+            tourIndex = 0;
+            document.body.classList.add("tour-active");
+            renderTour();
+        }
+
+        function endTour() {
+            clearTourTarget();
+            document.body.classList.remove("tour-active");
+            localStorage.setItem(TOUR_KEY, "1");
+        }
+
+        nextBtn.addEventListener("click", () => {
+            if (tourIndex >= visibleSteps.length - 1) { endTour(); return; }
+            tourIndex++;
+            renderTour();
+        });
+        prevBtn.addEventListener("click", () => {
+            if (tourIndex > 0) { tourIndex--; renderTour(); }
+        });
+        skipBtn.addEventListener("click", endTour);
+        document.getElementById("guide-btn").addEventListener("click", startTour);
+
+        // Auto-start on first visit only — give the page ~600ms to render first
+        if (!localStorage.getItem(TOUR_KEY)) {
+            setTimeout(startTour, 600);
+        }
     </script>
 </body>
 </html>
