@@ -208,9 +208,14 @@
         .banner {
             padding: 12px 16px;
             border-radius: 10px;
-            margin: 0 0 20px 0;
+            margin: 0 0 12px 0;
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
         }
+        .banner > form { margin: 0; }
         .banner-ok  {
             background: rgba(48,209,88,0.12);
             color: var(--success);
@@ -222,6 +227,29 @@
             color: var(--danger);
             border: 1px solid rgba(255,59,48,0.3);
         }
+        .banner-update {
+            background: var(--accent-soft);
+            color: var(--accent);
+            border: 1px solid rgba(0,122,255,0.3);
+        }
+        [data-theme="dark"] .banner-update { color: #5fa9ff; border-color: rgba(10,132,255,0.4); }
+        .banner-update .changelog {
+            color: var(--text-secondary);
+            font-weight: normal;
+            font-size: 13px;
+        }
+        .banner .grow { flex: 1; }
+        .btn-link {
+            background: transparent;
+            border: none;
+            color: inherit;
+            text-decoration: underline;
+            cursor: pointer;
+            padding: 4px 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .btn-link:hover { background: transparent; opacity: 0.7; }
 
         /* ============ CARD ============ */
         .card {
@@ -506,7 +534,39 @@
 
     <div class="page-content">
 
-        <!-- ============ SYNC BANNER ============ -->
+        <!-- ============ UPDATE / SYNC BANNERS ============ -->
+        {% if just_updated %}
+        <div class="banner banner-ok">
+            <span class="grow">✓ Saviour updated. <strong>Refresh this page</strong> to see the new version.</span>
+            <form method="post" action="/undo-update" onsubmit="return confirm('Roll back to the previous version?')">
+                <button type="submit" class="btn-link">Undo</button>
+            </form>
+        </div>
+        {% elif just_reverted %}
+        <div class="banner banner-ok">
+            ↩ Rolled back to the previous version. <strong>Refresh this page</strong> to see the change.
+        </div>
+        {% elif update_error %}
+        <div class="banner banner-err">
+            Update failed: {{ update_error }}
+        </div>
+        {% elif update_status and update_status.available %}
+        <div class="banner banner-update">
+            <span class="grow">
+                <strong>📥 Update available</strong>
+                {% if update_status.latest_message %}
+                  <span class="changelog">— {{ update_status.latest_message }}</span>
+                {% endif %}
+                {% if update_status.count > 1 %}
+                  <span class="changelog">(+{{ update_status.count - 1 }} more)</span>
+                {% endif %}
+            </span>
+            <form method="post" action="/update" onsubmit="this.querySelector('button').textContent='Updating…'; this.querySelector('button').disabled=true;">
+                <button type="submit" class="sync-btn">Update now ↻</button>
+            </form>
+        </div>
+        {% endif %}
+
         {% if synced_new is not none %}
         <div class="banner banner-ok">
             Synced — <strong>{{ synced_new }}</strong> new transaction{{ "" if synced_new == "1" else "s" }} added

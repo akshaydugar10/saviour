@@ -14,6 +14,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
+import threading
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -252,6 +256,83 @@ def migrate_overrides_to_rules(txns: list[dict]) -> int:
     return _add_rules(pairs)
 
 
+# ---- self-update from GitHub ----
+
+# Cached state so we don't run `git fetch` on every request. Refreshed in the
+# background once an hour. The first dashboard load after Flask starts may not
+# show a banner even if updates exist — the next load (after the bg fetch
+# finishes, ~1-2s later) will.
+_UPDATE_STATE = {
+    "available": False,
+    "count": 0,
+    "latest_message": None,
+    "checked_at": 0,
+    "checking": False,
+    "error": None,
+}
+_UPDATE_LOCK = threading.Lock()
+_UPDATE_TTL_SECONDS = 3600  # 1 hour
+
+
+def _run_git(args: list[str], timeout: int = 15) -> subprocess.CompletedProcess:
+    """Run a git subcommand in the project root. Raises on non-zero exit."""
+    return subprocess.run(
+        ["git"] + args,
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=True,
+    )
+
+
+def _do_update_check() -> None:
+    """Fetch from origin and compute how many commits ahead origin/main is.
+    Writes to _UPDATE_STATE. Safe to run in a background thread.
+    """
+    try:
+        _run_git(["fetch", "origin", "main", "--quiet"], timeout=15)
+        ahead = _run_git(["rev-list", "HEAD..origin/main", "--count"]).stdout.strip()
+        count = int(ahead or "0")
+        latest_msg = None
+        if count > 0:
+            latest_msg = _run_git(["log", "origin/main", "-1", "--pretty=%s"]).stdout.strip()
+        with _UPDATE_LOCK:
+            _UPDATE_STATE.update({
+                "available": count > 0,
+                "count": count,
+                "latest_message": latest_msg,
+                "checked_at": time.time(),
+                "checking": False,
+                "error": None,
+            })
+    except Exception as e:
+        with _UPDATE_LOCK:
+            _UPDATE_STATE.update({
+                "checked_at": time.time(),
+                "checking": False,
+                "error": str(e)[:200],
+            })
+
+
+def maybe_check_for_updates() -> None:
+    """Kick off a background update check if the cache is stale. Non-blocking."""
+    now = time.time()
+    with _UPDATE_LOCK:
+        if _UPDATE_STATE["checking"]:
+            return
+        if now - _UPDATE_STATE["checked_at"] < _UPDATE_TTL_SECONDS:
+            return
+        _UPDATE_STATE["checking"] = True
+    threading.Thread(target=_do_update_check, daemon=True).start()
+
+
+# Kick off one check at import time so the banner appears on first page load
+# (when possible — depending on network, may take 1-2s after Flask starts)
+threading.Thread(target=_do_update_check, daemon=True).start()
+_UPDATE_STATE["checking"] = True
+
+
 # ---- routes ----
 
 @app.route("/")
@@ -323,6 +404,16 @@ def dashboard():
     synced_dup = request.args.get("synced_dup")
     sync_error = request.args.get("sync_error")
 
+    # Update banners (set when redirected from /update or /undo-update)
+    just_updated = request.args.get("updated")
+    just_reverted = request.args.get("reverted")
+    update_error = request.args.get("update_error")
+
+    # Trigger a background check (non-blocking) so the "update available"
+    # banner shows up on next request if applicable
+    maybe_check_for_updates()
+    update_status = dict(_UPDATE_STATE)  # snapshot so template doesn't see mid-write
+
     total = sum(t["amount"] for t in real_spend)
     pct = total / monthly_budget * 100 if monthly_budget else 0
     remaining = monthly_budget - total
@@ -379,7 +470,57 @@ def dashboard():
         synced_new=synced_new,
         synced_dup=synced_dup,
         sync_error=sync_error,
+        # Update banners
+        update_status=update_status,
+        just_updated=just_updated,
+        just_reverted=just_reverted,
+        update_error=update_error,
     )
+
+
+@app.route("/update", methods=["POST"])
+def update_app():
+    """Pull latest code from GitHub + reinstall dependencies. Flask is in
+    debug mode and watches Python files, so it auto-reloads itself when the
+    pulled files land. The user just refreshes their browser after.
+    """
+    try:
+        pull = _run_git(["pull", "origin", "main"], timeout=60)
+        # Re-install dependencies in case requirements.txt changed
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--quiet", "-r", "requirements.txt"],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+            timeout=180,
+        )
+        # Bust the update cache so the banner clears immediately
+        with _UPDATE_LOCK:
+            _UPDATE_STATE.update({
+                "available": False,
+                "count": 0,
+                "latest_message": None,
+                "checked_at": time.time(),
+            })
+        return redirect(url_for("dashboard", updated="1"))
+    except subprocess.CalledProcessError as e:
+        msg = (e.stderr or e.stdout or str(e))[:300]
+        return redirect(url_for("dashboard", update_error=msg))
+    except Exception as e:
+        return redirect(url_for("dashboard", update_error=str(e)[:300]))
+
+
+@app.route("/undo-update", methods=["POST"])
+def undo_update():
+    """Roll back to the previous commit (last entry in reflog before now).
+    Useful if a freshly-pulled update broke something.
+    """
+    try:
+        _run_git(["reset", "--hard", "HEAD@{1}"], timeout=10)
+        with _UPDATE_LOCK:
+            _UPDATE_STATE["checked_at"] = 0  # re-check on next load
+        return redirect(url_for("dashboard", reverted="1"))
+    except Exception as e:
+        return redirect(url_for("dashboard", update_error=str(e)[:300]))
 
 
 @app.route("/sync", methods=["POST"])
