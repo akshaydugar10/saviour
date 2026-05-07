@@ -402,6 +402,86 @@
         }
         .cat-table .drilldown tr:last-child td { border-bottom: none; }
 
+        /* Drilldown row "Move" affordance */
+        .drill-actions { text-align: right; width: 70px; padding-right: 12px !important; }
+        .move-btn {
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+        }
+        .drill-row:hover .move-btn { opacity: 1; }
+        .move-btn:hover {
+            background: var(--accent-soft);
+            color: var(--accent);
+            border-color: var(--accent);
+            opacity: 1;
+        }
+        .recat-row td { background: var(--bg-soft); padding: 12px !important; }
+        .recat-form {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .recat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .recat-form input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+        }
+        .recat-save {
+            background: var(--accent);
+            color: var(--text-on-accent);
+            border-color: var(--accent);
+        }
+        .recat-save:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .recat-cancel { color: var(--text-secondary); }
+
+        /* ============ TOAST ============ */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            padding: 14px 18px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-soft);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            transition: opacity 0.4s, transform 0.4s;
+        }
+        .toast.toast-fade {
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+        .toast form { margin: 0; }
+        .toast-undo {
+            background: transparent;
+            color: var(--accent);
+            border: none;
+            padding: 4px 6px;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: underline;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
         /* ============ COLLAPSIBLE ============ */
         details.collapsible > summary {
             cursor: pointer;
@@ -610,12 +690,27 @@
                 <tr class="cat-detail" id="cat-{{ loop.index }}" hidden>
                     <td colspan="3">
                         <table class="drilldown">
-                            <tr><th>Date</th><th>Counterparty</th><th class="num">Amount</th></tr>
+                            <tr><th>Date</th><th>Counterparty</th><th class="num">Amount</th><th></th></tr>
                             {% for t in txns %}
-                            <tr>
+                            <tr class="drill-row" data-key="{{ t._key }}">
                                 <td>{{ t.date }}</td>
                                 <td>{{ t.counterparty }}</td>
                                 <td class="num">{{ t.amount | inr }}</td>
+                                <td class="drill-actions">
+                                    <button type="button" class="move-btn" data-key="{{ t._key }}">Move</button>
+                                </td>
+                            </tr>
+                            <tr class="recat-row" id="recat-{{ t._key | replace('|', '_') | replace('.', '_') }}" hidden>
+                                <td colspan="4">
+                                    <form method="post" action="/recategorize-one" class="recat-form">
+                                        <input type="hidden" name="key" value="{{ t._key }}">
+                                        <input type="hidden" name="from_month" value="{{ selected_month }}">
+                                        <span class="recat-label">Move just this row to:</span>
+                                        <input type="text" list="cat-list" name="category" placeholder="type or pick a category" required>
+                                        <button type="submit" class="recat-save">Save</button>
+                                        <button type="button" class="recat-cancel">Cancel</button>
+                                    </form>
+                                </td>
                             </tr>
                             {% endfor %}
                         </table>
@@ -703,11 +798,26 @@
                     {% endfor %}
                 </table>
             </form>
-            <datalist id="cat-list">
-                {% for c in available_categories %}
-                <option value="{{ c }}">
-                {% endfor %}
-            </datalist>
+        </div>
+        {% endif %}
+
+        <!-- Global datalist used by Review's bulk save AND each drilldown row's Move form -->
+        <datalist id="cat-list">
+            {% for c in available_categories %}
+            <option value="{{ c }}">
+            {% endfor %}
+        </datalist>
+
+        <!-- Recategorize toast (shows briefly after a successful per-row Move) -->
+        {% if recat_to %}
+        <div class="toast" id="recat-toast">
+            <span>Moved to <strong>{{ recat_to }}</strong></span>
+            <form method="post" action="/categorize">
+                <input type="hidden" name="action" value="undo">
+                <input type="hidden" name="key" value="{{ recat_key }}">
+                <input type="hidden" name="from_month" value="{{ selected_month }}">
+                <button type="submit" class="toast-undo">Undo</button>
+            </form>
         </div>
         {% endif %}
 
@@ -783,6 +893,48 @@
             document.documentElement.setAttribute("data-theme", next);
             localStorage.setItem("saviour_theme", next);
         });
+
+        // Drilldown row "Move" button → reveal inline edit form below the row
+        function rowEscapeKey(k) {
+            // Mirror Jinja's `replace('|','_').replace('.','_')` so client and server agree
+            return k.replace(/\|/g, "_").replace(/\./g, "_");
+        }
+        document.querySelectorAll(".move-btn").forEach(btn => {
+            btn.addEventListener("click", e => {
+                e.stopPropagation();  // don't trigger the parent .cat-summary toggle
+                const key = btn.dataset.key;
+                const formRow = document.getElementById("recat-" + rowEscapeKey(key));
+                if (!formRow) return;
+                // Close any other open recat row, then toggle this one
+                document.querySelectorAll(".recat-row").forEach(r => {
+                    if (r !== formRow) r.hidden = true;
+                });
+                formRow.hidden = !formRow.hidden;
+                if (!formRow.hidden) {
+                    formRow.querySelector('input[name="category"]').focus();
+                }
+            });
+        });
+        document.querySelectorAll(".recat-cancel").forEach(btn => {
+            btn.addEventListener("click", e => {
+                e.stopPropagation();
+                btn.closest(".recat-row").hidden = true;
+            });
+        });
+
+        // Auto-fade the recategorize toast after 4 seconds. After fade, also
+        // strip the recat_to / recat_key params from the URL so a refresh
+        // doesn't re-show the toast.
+        const toast = document.getElementById("recat-toast");
+        if (toast) {
+            setTimeout(() => toast.classList.add("toast-fade"), 4000);
+            setTimeout(() => {
+                const url = new URL(window.location);
+                url.searchParams.delete("recat_to");
+                url.searchParams.delete("recat_key");
+                window.history.replaceState({}, "", url);
+            }, 4500);
+        }
 
         // Click a category row to toggle its drilldown
         document.querySelectorAll(".cat-summary").forEach(row => {

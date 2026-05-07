@@ -238,8 +238,12 @@ def find_matched_pairs(
 def migrate_overrides_to_rules(txns: list[dict]) -> int:
     """Promote any per-transaction CATEGORY overrides into rules so they apply
     to all future matching transactions. Idempotent — only adds rules that
-    don't exist yet. Per-txn rejections are NOT promoted (they're per-txn
-    by design).
+    don't exist yet.
+
+    Skipped:
+      - Rejections (they're per-txn by design)
+      - Overrides marked `scope: "row"` (the user explicitly said "just this
+        one transaction" via the drilldown Move button)
     """
     overrides = load_overrides()
     if not overrides:
@@ -247,6 +251,8 @@ def migrate_overrides_to_rules(txns: list[dict]) -> int:
     key_to_cp = {t["_key"]: t["counterparty"] for t in txns}
     pairs: dict[str, str] = {}
     for key, ov in overrides.items():
+        if ov.get("scope") == "row":
+            continue  # explicit per-row override — don't promote
         cat = ov.get("category")
         if not cat:
             continue
@@ -409,6 +415,10 @@ def dashboard():
     just_reverted = request.args.get("reverted")
     update_error = request.args.get("update_error")
 
+    # Recategorize toast (set when redirected from /recategorize-one)
+    recat_to = request.args.get("recat_to")
+    recat_key = request.args.get("recat_key")
+
     # Trigger a background check (non-blocking) so the "update available"
     # banner shows up on next request if applicable
     maybe_check_for_updates()
@@ -475,6 +485,9 @@ def dashboard():
         just_updated=just_updated,
         just_reverted=just_reverted,
         update_error=update_error,
+        # Recategorize toast
+        recat_to=recat_to,
+        recat_key=recat_key,
     )
 
 
@@ -578,6 +591,31 @@ def rename_category():
     save_overrides(overrides)
 
     return redirect(url_for("dashboard", month=from_month) if from_month else url_for("dashboard"))
+
+
+@app.route("/recategorize-one", methods=["POST"])
+def recategorize_one():
+    """Move a single transaction to a different category — per-row override.
+
+    Different intent from /categorize set (which writes a rule that affects all
+    transactions from a counterparty). This writes a per-txn override marked
+    `scope: "row"` so the migration helper doesn't promote it into a rule.
+    """
+    key = request.form.get("key", "").strip()
+    category = request.form.get("category", "").strip()
+    from_month = request.form.get("from_month")
+
+    if not key or not category:
+        return redirect(url_for("dashboard", month=from_month) if from_month else url_for("dashboard"))
+
+    overrides = load_overrides()
+    overrides[key] = {"category": category, "rejected": False, "scope": "row"}
+    save_overrides(overrides)
+
+    params = {"recat_to": category, "recat_key": key}
+    if from_month:
+        params["month"] = from_month
+    return redirect(url_for("dashboard", **params))
 
 
 @app.route("/categorize", methods=["POST"])
