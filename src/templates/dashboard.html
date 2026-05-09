@@ -204,6 +204,71 @@
             cursor: wait;
         }
 
+        /* Historical-month backfill popover */
+        .hist-popover { position: relative; margin: 0; }
+        .hist-trigger {
+            list-style: none;
+            cursor: pointer;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 1;
+            transition: background-color 0.15s;
+            user-select: none;
+        }
+        .hist-trigger::-webkit-details-marker { display: none; }
+        .hist-trigger:hover { background: var(--bg-hover); }
+        .hist-popover[open] .hist-trigger {
+            background: var(--accent-soft);
+            border-color: var(--accent);
+        }
+        .hist-content {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            padding: 16px 18px;
+            min-width: 280px;
+            max-width: 340px;
+            z-index: 20;
+        }
+        .hist-content h3 {
+            margin: 0 0 6px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .hist-content .subtle {
+            margin: 0 0 12px 0;
+            line-height: 1.45;
+        }
+        .hist-content form {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 0;
+        }
+        .hist-content input[type="month"] {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .hist-content button[type="submit"] {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+
         /* ============ BANNER ============ */
         .banner {
             padding: 12px 16px;
@@ -694,6 +759,18 @@
                 <input type="hidden" name="from_month" value="{{ selected_month }}">
                 <button type="submit" class="sync-btn">⟳ Sync</button>
             </form>
+            <details class="hist-popover">
+                <summary class="hist-trigger" title="Backfill a specific month">📅</summary>
+                <div class="hist-content">
+                    <h3>Backfill a month</h3>
+                    <p class="subtle">Pull all HDFC alerts from a specific past month. Useful for adding months you haven't synced before. Already-fetched transactions are skipped automatically.</p>
+                    <form method="post" action="/sync-historical" onsubmit="this.querySelector('button[type=submit]').textContent='Fetching…'; this.querySelector('button[type=submit]').disabled=true;">
+                        <input type="hidden" name="from_month" value="{{ selected_month }}">
+                        <input type="month" name="month" required min="2018-01" max="{{ selected_month }}">
+                        <button type="submit" class="btn-primary">Fetch</button>
+                    </form>
+                </div>
+            </details>
         </div>
     </div>
 

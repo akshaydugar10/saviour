@@ -562,6 +562,56 @@ def undo_update():
         return redirect(url_for("dashboard", update_error=str(e)[:300]))
 
 
+@app.route("/sync-historical", methods=["POST"])
+def sync_historical():
+    """Fetch all HDFC alerts from a specific calendar month — for backfilling
+    history. Dedup applies (the fetcher won't re-add transactions whose
+    Message-IDs are already on disk), so this is safe to run on months that
+    already have partial data.
+
+    After a successful fetch, the dashboard auto-switches to that month so the
+    user sees the freshly-loaded data right away.
+    """
+    target_month = request.form.get("month", "").strip()  # "YYYY-MM"
+    from_month = request.form.get("from_month")  # currently-viewed month
+
+    def _err(msg: str):
+        params = {"sync_error": msg[:200]}
+        if from_month:
+            params["month"] = from_month
+        return redirect(url_for("dashboard", **params))
+
+    # Validate format
+    try:
+        target_dt = datetime.strptime(target_month, "%Y-%m")
+    except ValueError:
+        return _err("Invalid month format")
+
+    # No fetching the future
+    if target_dt > datetime.now():
+        return _err("That month is in the future")
+
+    # IMAP date window: first day of month → first day of next month (exclusive)
+    since = target_dt.strftime("%d-%b-%Y")
+    if target_dt.month == 12:
+        next_dt = target_dt.replace(year=target_dt.year + 1, month=1)
+    else:
+        next_dt = target_dt.replace(month=target_dt.month + 1)
+    before = next_dt.strftime("%d-%b-%Y")
+
+    try:
+        stats = run_fetcher(since=since, before=before)
+        params = {
+            "synced_new": stats["new"],
+            "synced_dup": stats["skipped_duplicate"],
+            "month": target_month,  # auto-switch to the month they just fetched
+        }
+    except Exception as e:
+        return _err(str(e))
+
+    return redirect(url_for("dashboard", **params))
+
+
 @app.route("/sync", methods=["POST"])
 def sync():
     """Run the Gmail fetcher in-process. Computes a tight SINCE based on the
