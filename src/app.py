@@ -213,13 +213,21 @@ def find_matched_pairs(
         for tr in transfers:
             if tr["_key"] in used:
                 continue
-            day_diff = abs((cc_d - datetime.strptime(tr["date"], "%Y-%m-%d")).days)
-            if day_diff > 3:
+            tr_d = datetime.strptime(tr["date"], "%Y-%m-%d")
+            day_diff = (tr_d - cc_d).days  # signed: negative if transfer is BEFORE cc
+            if abs(day_diff) > 3:
                 continue
             amt_diff = abs(cc_amt - tr["amount"])
             if amt_diff > 100:
                 continue
-            score = amt_diff + day_diff * 10  # amount match weighs more than date
+            # Score: amount match is the primary signal. Day distance is
+            # secondary. Mild penalty for transfers BEFORE the CC date — the
+            # typical pattern is spend-then-compensate, so a same-day or
+            # after-CC transfer should beat a before-CC transfer of equal
+            # amount distance.
+            score = amt_diff + abs(day_diff) * 10
+            if day_diff < 0:
+                score += 5
             if best is None or score < best_score:
                 best, best_score = tr, score
         if best is None:

@@ -467,25 +467,43 @@
         }
         .cat-table .drilldown tr:last-child td { border-bottom: none; }
 
-        /* Drilldown row "Move" affordance */
-        .drill-actions { text-align: right; width: 70px; padding-right: 12px !important; }
-        .move-btn {
+        /* Drilldown / Top 10 row "Move" + "Reject" affordances */
+        .drill-actions {
+            text-align: right;
+            white-space: nowrap;
+            padding-right: 12px !important;
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .reject-row-form { margin: 0; display: inline; }
+        .move-btn, .reject-row-btn {
             padding: 3px 10px;
             font-size: 12px;
             font-weight: 500;
-            color: var(--text-secondary);
             background: transparent;
             border: 1px solid var(--border);
             border-radius: 6px;
             cursor: pointer;
             opacity: 0.6;
-            transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+            transition: opacity 0.15s, background-color 0.15s, color 0.15s, border-color 0.15s;
+            font-family: inherit;
         }
-        .drill-row:hover .move-btn { opacity: 1; }
+        .move-btn { color: var(--text-secondary); }
+        .reject-row-btn { color: var(--text-secondary); }
+        .drill-row:hover .move-btn,
+        .drill-row:hover .reject-row-btn { opacity: 1; }
         .move-btn:hover {
             background: var(--accent-soft);
             color: var(--accent);
             border-color: var(--accent);
+            opacity: 1;
+        }
+        .reject-row-btn:hover {
+            background: rgba(255,59,48,0.1);
+            color: var(--danger);
+            border-color: rgba(255,59,48,0.3);
             opacity: 1;
         }
         .recat-row td { background: var(--bg-soft); padding: 12px !important; }
@@ -860,9 +878,15 @@
                                 <td class="num">{{ t.amount | inr }}</td>
                                 <td class="drill-actions">
                                     <button type="button" class="move-btn" data-key="{{ t._key }}">Move</button>
+                                    <form method="post" action="/categorize" class="reject-row-form" onsubmit="return confirm('Exclude this from spending totals? You can restore it from the Rejected section.')">
+                                        <input type="hidden" name="action" value="reject">
+                                        <input type="hidden" name="key" value="{{ t._key }}">
+                                        <input type="hidden" name="from_month" value="{{ selected_month }}">
+                                        <button type="submit" class="reject-row-btn">Reject</button>
+                                    </form>
                                 </td>
                             </tr>
-                            <tr class="recat-row" id="recat-{{ t._key | replace('|', '_') | replace('.', '_') }}" hidden>
+                            <tr class="recat-row" hidden>
                                 <td colspan="4">
                                     <form method="post" action="/recategorize-one" class="recat-form">
                                         <input type="hidden" name="key" value="{{ t._key }}">
@@ -917,13 +941,34 @@
         <div class="card">
             <h2>Top 10 expenses</h2>
             <table>
-                <tr><th>Date</th><th>Counterparty</th><th>Category</th><th class="num">Amount</th></tr>
+                <tr><th>Date</th><th>Counterparty</th><th>Category</th><th class="num">Amount</th><th></th></tr>
                 {% for t in top %}
-                <tr>
+                <tr class="drill-row" data-key="{{ t._key }}">
                     <td>{{ t.date }}</td>
                     <td>{{ t.counterparty }}</td>
                     <td><span class="pill" style="{{ t.category | catcolor }}">{{ t.category }}</span></td>
                     <td class="num">{{ t.amount | inr }}</td>
+                    <td class="drill-actions">
+                        <button type="button" class="move-btn" data-key="{{ t._key }}">Move</button>
+                        <form method="post" action="/categorize" class="reject-row-form" onsubmit="return confirm('Exclude this from spending totals? You can restore it from the Rejected section.')">
+                            <input type="hidden" name="action" value="reject">
+                            <input type="hidden" name="key" value="{{ t._key }}">
+                            <input type="hidden" name="from_month" value="{{ selected_month }}">
+                            <button type="submit" class="reject-row-btn">Reject</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr class="recat-row" hidden>
+                    <td colspan="5">
+                        <form method="post" action="/recategorize-one" class="recat-form">
+                            <input type="hidden" name="key" value="{{ t._key }}">
+                            <input type="hidden" name="from_month" value="{{ selected_month }}">
+                            <span class="recat-label">Move just this row to:</span>
+                            <input type="text" list="cat-list" name="category" placeholder="type or pick a category" required>
+                            <button type="submit" class="recat-save">Save</button>
+                            <button type="button" class="recat-cancel">Cancel</button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </table>
@@ -1170,17 +1215,16 @@
         // Initial render — default 6 months
         renderTrend("6");
 
-        // Drilldown row "Move" button → reveal inline edit form below the row
-        function rowEscapeKey(k) {
-            // Mirror Jinja's `replace('|','_').replace('.','_')` so client and server agree
-            return k.replace(/\|/g, "_").replace(/\./g, "_");
-        }
+        // "Move" button → reveal inline edit form (the sibling .recat-row immediately below).
+        // Works for both category drilldown rows AND Top 10 rows because both follow the
+        // same DOM pattern: <tr class="drill-row">…</tr> followed by <tr class="recat-row" hidden>.
         document.querySelectorAll(".move-btn").forEach(btn => {
             btn.addEventListener("click", e => {
-                e.stopPropagation();  // don't trigger the parent .cat-summary toggle
-                const key = btn.dataset.key;
-                const formRow = document.getElementById("recat-" + rowEscapeKey(key));
-                if (!formRow) return;
+                e.stopPropagation();  // don't trigger the parent .cat-summary toggle in drilldowns
+                const sourceRow = btn.closest(".drill-row");
+                if (!sourceRow) return;
+                const formRow = sourceRow.nextElementSibling;
+                if (!formRow || !formRow.classList.contains("recat-row")) return;
                 // Close any other open recat row, then toggle this one
                 document.querySelectorAll(".recat-row").forEach(r => {
                     if (r !== formRow) r.hidden = true;
@@ -1278,7 +1322,7 @@
             {
                 selector: ".card-categories",
                 title: "Where your money goes",
-                body: "Categories ranked by spend. Click any row to expand it. Inside each drilldown, every transaction has a small Move button to recategorize just that one row (without changing the rule for similar transactions).",
+                body: "Categories ranked by spend. Click any row to expand it. Each transaction inside has Move (recategorize just that one row) and Reject (exclude from totals) buttons. The same buttons appear on every Top 10 row below.",
                 placement: "above",
             },
             {
