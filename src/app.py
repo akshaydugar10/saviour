@@ -117,7 +117,12 @@ def save_overrides(overrides: dict) -> None:
 
 
 def apply_overrides(txns: list[dict], overrides: dict) -> None:
-    """For each transaction with an override, mutate its category / flags accordingly."""
+    """For each transaction with an override, mutate its category / amount /
+    flags. Override entries can carry any combination of:
+       category   string  → replaces t["category"]
+       amount     number  → replaces t["amount"], original kept as t["original_amount"]
+       rejected   bool    → marks the txn excluded from totals
+    """
     for t in txns:
         ov = overrides.get(t["_key"])
         if not ov:
@@ -127,10 +132,16 @@ def apply_overrides(txns: list[dict], overrides: dict) -> None:
             t["is_rejected"] = True
             t["category"] = "Excluded"
             t["is_review_needed"] = False
-        elif ov.get("category"):
+            continue
+        # Non-rejected: category and amount are independent
+        t["is_rejected"] = False
+        if ov.get("category"):
             t["category"] = ov["category"]
             t["is_review_needed"] = False
-            t["is_rejected"] = False
+        if ov.get("amount") is not None:
+            t["original_amount"] = t["amount"]
+            t["amount"] = ov["amount"]
+            t["is_amount_overridden"] = True
 
 
 def available_categories() -> list[str]:
@@ -438,6 +449,7 @@ def dashboard():
     # Recategorize toast (set when redirected from /recategorize-one)
     recat_to = request.args.get("recat_to")
     recat_key = request.args.get("recat_key")
+    recat_amt = request.args.get("recat_amt")
 
     # Trigger a background check (non-blocking) so the "update available"
     # banner shows up on next request if applicable
@@ -537,6 +549,7 @@ def dashboard():
         # Recategorize toast
         recat_to=recat_to,
         recat_key=recat_key,
+        recat_amt=recat_amt,
         # Monthly trend chart
         trend_series=trend_series,
     )
@@ -696,27 +709,67 @@ def rename_category():
 
 @app.route("/recategorize-one", methods=["POST"])
 def recategorize_one():
-    """Move a single transaction to a different category — per-row override.
+    """Edit a single transaction — change its category, its amount, or both.
+    Per-row override; the migration helper skips entries with scope="row" so
+    these don't get promoted into rules that would affect other transactions.
 
-    Different intent from /categorize set (which writes a rule that affects all
-    transactions from a counterparty). This writes a per-txn override marked
-    `scope: "row"` so the migration helper doesn't promote it into a rule.
+    Either field is optional — submit with just `category` to recategorise,
+    just `amount` to override the value, or both. At least one must be
+    provided.
     """
     key = request.form.get("key", "").strip()
     category = request.form.get("category", "").strip()
+    amount_str = request.form.get("amount", "").strip()
     from_month = request.form.get("from_month")
 
-    if not key or not category:
-        return redirect(url_for("dashboard", month=from_month) if from_month else url_for("dashboard"))
+    def _redir(**extra):
+        params = dict(extra)
+        if from_month:
+            params.setdefault("month", from_month)
+        return redirect(url_for("dashboard", **params))
 
+    if not key:
+        return _redir()
+
+    # Parse amount if provided
+    amount = None
+    if amount_str:
+        try:
+            amount = float(amount_str)
+            if amount < 0:
+                return _redir(update_error="Amount can't be negative")
+        except ValueError:
+            return _redir(update_error="Amount must be a number")
+
+    if not category and amount is None:
+        return _redir()  # nothing to change
+
+    # Merge with any existing override on this row, preserve scope=row
     overrides = load_overrides()
-    overrides[key] = {"category": category, "rejected": False, "scope": "row"}
+    existing = overrides.get(key, {})
+    new_override = {
+        "scope": "row",
+        "rejected": False,
+    }
+    # Carry forward fields the user didn't touch this round
+    if "category" in existing and not category:
+        new_override["category"] = existing["category"]
+    if "amount" in existing and amount is None:
+        new_override["amount"] = existing["amount"]
+    # Apply the new values
+    if category:
+        new_override["category"] = category
+    if amount is not None:
+        new_override["amount"] = amount
+    overrides[key] = new_override
     save_overrides(overrides)
 
-    params = {"recat_to": category, "recat_key": key}
-    if from_month:
-        params["month"] = from_month
-    return redirect(url_for("dashboard", **params))
+    params = {"recat_key": key}
+    if category:
+        params["recat_to"] = category
+    if amount is not None:
+        params["recat_amt"] = amount
+    return _redir(**params)
 
 
 @app.route("/categorize", methods=["POST"])

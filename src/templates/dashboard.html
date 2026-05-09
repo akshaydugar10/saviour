@@ -519,7 +519,22 @@
         }
         .recat-form input[type="text"] {
             flex: 1;
-            min-width: 200px;
+            min-width: 180px;
+        }
+        .recat-form .recat-amount {
+            width: 160px;
+            padding: 5px 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .recat-form .recat-amount:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
         }
         .recat-save {
             background: var(--accent);
@@ -891,8 +906,9 @@
                                     <form method="post" action="/recategorize-one" class="recat-form">
                                         <input type="hidden" name="key" value="{{ t._key }}">
                                         <input type="hidden" name="from_month" value="{{ selected_month }}">
-                                        <span class="recat-label">Move just this row to:</span>
-                                        <input type="text" list="cat-list" name="category" placeholder="type or pick a category" required>
+                                        <span class="recat-label">Edit just this row:</span>
+                                        <input type="text" list="cat-list" name="category" placeholder="new category (optional)">
+                                        <input type="number" name="amount" step="0.01" min="0" placeholder="new ₹ amount (optional)" class="recat-amount">
                                         <button type="submit" class="recat-save">Save</button>
                                         <button type="button" class="recat-cancel">Cancel</button>
                                     </form>
@@ -1031,10 +1047,18 @@
             {% endfor %}
         </datalist>
 
-        <!-- Recategorize toast (shows briefly after a successful per-row Move) -->
-        {% if recat_to %}
+        <!-- Recategorize/Edit toast (shows briefly after a successful per-row edit) -->
+        {% if recat_to or recat_amt %}
         <div class="toast" id="recat-toast">
-            <span>Moved to <strong>{{ recat_to }}</strong></span>
+            <span>
+                {% if recat_to and recat_amt %}
+                    Moved to <strong>{{ recat_to }}</strong>, amount <strong>₹{{ recat_amt }}</strong>
+                {% elif recat_to %}
+                    Moved to <strong>{{ recat_to }}</strong>
+                {% else %}
+                    Amount changed to <strong>₹{{ recat_amt }}</strong>
+                {% endif %}
+            </span>
             <form method="post" action="/categorize">
                 <input type="hidden" name="action" value="undo">
                 <input type="hidden" name="key" value="{{ recat_key }}">
@@ -1243,8 +1267,7 @@
         });
 
         // Auto-fade the recategorize toast after 4 seconds. After fade, also
-        // strip the recat_to / recat_key params from the URL so a refresh
-        // doesn't re-show the toast.
+        // strip the recat_* params from the URL so a refresh doesn't re-show.
         const toast = document.getElementById("recat-toast");
         if (toast) {
             setTimeout(() => toast.classList.add("toast-fade"), 4000);
@@ -1252,6 +1275,7 @@
                 const url = new URL(window.location);
                 url.searchParams.delete("recat_to");
                 url.searchParams.delete("recat_key");
+                url.searchParams.delete("recat_amt");
                 window.history.replaceState({}, "", url);
             }, 4500);
         }
@@ -1322,7 +1346,7 @@
             {
                 selector: ".card-categories",
                 title: "Where your money goes",
-                body: "Categories ranked by spend. Click any row to expand it. Each transaction inside has Move (recategorize just that one row) and Reject (exclude from totals) buttons. The same buttons appear on every Top 10 row below.",
+                body: "Categories ranked by spend. Click any row to expand it. Each transaction has Move (change category and/or amount for just that row) and Reject (exclude from totals) buttons. The same buttons appear on every Top 10 row below.",
                 placement: "above",
             },
             {
