@@ -742,7 +742,7 @@
     <div class="sticky-top">
         <div class="page-content">
             <h1>Saviour</h1>
-            <span class="account-label">{{ user_name }} · Joint {{ joint_account }} ·</span>
+            <span class="account-label">{{ user_name }} · {{ joint_account }}{% for c in card_suffixes %} + {{ c }}{% endfor %} ·</span>
             <form method="get" action="/" style="display:inline;">
                 <select name="month" onchange="this.form.submit()">
                     {% for value, label in month_options %}
@@ -1254,7 +1254,7 @@
             {
                 selector: ".card.hero",
                 title: "Your monthly budget",
-                body: "The bar fills as you spend. Green is healthy, orange means you're getting close, red means over budget.",
+                body: "Total joint spending — bank account debits AND credit card spends combined. The bar is green when healthy, orange near the limit, red when over budget. Self-transfers and CC spends compensated by personal transfers are excluded.",
                 placement: "below",
             },
             {

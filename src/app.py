@@ -399,11 +399,23 @@ def dashboard():
     # ---- Filter to the selected month for everything below ----
     txns_month = [t for t in txns if t.get("date", "").startswith(selected_month)]
 
-    joint = [t for t in txns_month if t["account"] == joint_account]
+    # Real "joint spending" = debits on the joint bank account PLUS debits on
+    # any of the user's credit cards. CC spends ARE real spending the moment
+    # they happen — waiting for the bill to land would lag the dashboard by
+    # up to a month. The matched-pair set captures CC spends that were
+    # personally compensated by an inbound transfer from spouse/own-account
+    # (the "I paid for shoes on the card to earn points but it's my money"
+    # case) — those are excluded so they don't bloat the joint number.
+    card_set = set(card_suffixes)
+    matched_cc_keys = {p["cc"]["_key"] for p in matched_pairs_all}
+
+    joint = [t for t in txns_month
+             if t["account"] == joint_account or t["account"] in card_set]
     real_spend = [t for t in joint
                   if t["type"] == "debit"
-                  and not t["is_self_transfer"]
-                  and not t["is_rejected"]]
+                  and not t.get("is_self_transfer")
+                  and not t.get("is_rejected")
+                  and t["_key"] not in matched_cc_keys]
 
     # Sync feedback banner (set when redirected from /sync)
     synced_new = request.args.get("synced_new")
@@ -459,16 +471,20 @@ def dashboard():
     )
 
     # ---- Monthly trend series (across ALL data, not just selected month) ----
-    # Same definition as the hero number: joint-account debits, excluding
-    # self-transfers and rejections. JS renders the SVG client-side so we
-    # ship raw numbers and let the user toggle ranges without a refresh.
+    # Same definition as the hero number: joint-account + card debits,
+    # excluding self-transfers, rejections, and matched-pair compensated CC
+    # spends. JS renders the SVG client-side so we ship raw numbers and let
+    # the user toggle ranges without a refresh.
     monthly_totals: dict[str, float] = defaultdict(float)
     for t in txns:
         if (
-            t.get("account") == joint_account
-            and t.get("type") == "debit"
-            and not t.get("is_self_transfer")
+            t.get("type") == "debit"
             and not t.get("is_rejected")
+            and t["_key"] not in matched_cc_keys
+            and (
+                (t.get("account") == joint_account and not t.get("is_self_transfer"))
+                or t.get("account") in card_set
+            )
         ):
             ym = (t.get("date") or "")[:7]
             if ym:
@@ -486,6 +502,7 @@ def dashboard():
         "dashboard.html",
         user_name=user["name"],
         joint_account=joint_account,
+        card_suffixes=card_suffixes,
         total=total,
         pct=pct,
         budget=monthly_budget,
