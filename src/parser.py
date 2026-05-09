@@ -52,6 +52,34 @@ def parse_upi_debit(body: str) -> dict | None:
     )
 
 
+def parse_upi_debit_v2(body: str) -> dict | None:
+    """New 2026-05 HDFC UPI debit format. Same outflow as parse_upi_debit but
+    with reworded body:
+        "Rs.X is debited from your account ending NNNN towards VPA <handle>
+         (<NAME>) on DD-MM-YY."
+    """
+    pattern = re.compile(
+        r"Rs\.?\s*([\d,]+\.\d{1,2})"
+        r"\s+is debited from your account ending\s+(\d{4,})"
+        r"\s+towards VPA\s+(\S+)"
+        r"\s*\((.+?)\)"
+        r"\s+on\s+(\d{2}-\d{2}-\d{2})",
+    )
+    match = pattern.search(body)
+    if match is None:
+        return None
+    amount_str, account, vpa, counterparty, date_str = match.groups()
+    return _txn(
+        date=_format_dmy(date_str),
+        amount=amount_str,
+        type="debit",
+        account=account,
+        counterparty=counterparty,
+        vpa=vpa,
+        source="upi_debit_v2",
+    )
+
+
 def parse_upi_account_to_account_debit(body: str) -> dict | None:
     """UPI debit where the counterparty is another bank account (no VPA)."""
     pattern = re.compile(
@@ -211,17 +239,49 @@ def parse_account_credited(body: str) -> dict | None:
     )
 
 
+def parse_account_credited_v2(body: str) -> dict | None:
+    """New 2026-05 HDFC inbound-credit format. Different wording from
+    parse_account_credited and uses structured fields:
+        "Rs.X has been successfully credited to your HDFC Bank account
+         ending in NNNN. Transaction Details:
+            a. Date: DD-MM-YY
+            b. Sender: <NAME> (VPA: <handle>)
+            c. UPI Reference No.: ..."
+    """
+    pattern = re.compile(
+        r"Rs\.?\s*([\d,]+\.\d{1,2})"
+        r"\s+has been successfully credited to your HDFC Bank account ending in\s+(\d{4,})"
+        r".*?a\.\s*Date:\s*(\d{2}-\d{2}-\d{2})"
+        r".*?b\.\s*Sender:\s*(.+?)\s*\(VPA:\s*(\S+?)\)",
+    )
+    match = pattern.search(body)
+    if match is None:
+        return None
+    amount_str, account, date_str, sender_name, vpa = match.groups()
+    return _txn(
+        date=_format_dmy(date_str),
+        amount=amount_str,
+        type="credit",
+        account=account,
+        counterparty=sender_name,
+        vpa=vpa,
+        source="account_credit_v2",
+    )
+
+
 # ---- dispatcher ----
 
 def parse_email(body: str) -> dict | None:
     """Try each parser in turn. Return the first match, or None if nothing fits."""
     parsers = (
         parse_upi_debit,
+        parse_upi_debit_v2,
         parse_upi_account_to_account_debit,
         parse_credit_card_debit,
         parse_credit_card_thank_you,
         parse_upi_credit,
         parse_account_credited,
+        parse_account_credited_v2,
         parse_account_debited_transfer,
         parse_netbanking_payment,
     )
