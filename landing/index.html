@@ -485,17 +485,15 @@
                 <pre id="run-command">bash ~/Downloads/saviour-install.sh</pre>
                 <button class="copy-btn" onclick="copyCmd('run-command', this)">Copy</button>
             </div>
-            <p class="help">Takes 3-5 minutes the first time. The terminal will look frozen during pip install — that's fine, just let it run.</p>
+            <p class="help">Takes 3-5 minutes the first time. The terminal will look frozen during pip install — that's fine, just let it run. The installer also sets up auto-start, so the dashboard runs in the background from now on.</p>
 
             <h3>Step C — open the dashboard</h3>
-            <p class="help">Once it says <em>"Saviour is installed!"</em>, run:</p>
-            <div class="copy-row">
-                <pre id="open-command">cd ~/saviour && python3 src/app.py</pre>
-                <button class="copy-btn" onclick="copyCmd('open-command', this)">Copy</button>
-            </div>
-            <p class="help">When you see <code>Running on http://127.0.0.1:5001</code> in Terminal, click the button below.</p>
+            <p class="help">Once the installer says <em>"Saviour is installed and auto-starts at login!"</em>, click below:</p>
             <p style="margin-top: 14px;">
                 <a href="http://localhost:5001" target="_blank" rel="noopener" class="btn-primary big">🚀 Open Saviour</a>
+            </p>
+            <p class="help" style="margin-top: 12px;">
+                💡 You won't need Terminal again — Saviour will be at <strong>http://localhost:5001</strong> every time you log in to your Mac. Bookmark it.
             </p>
 
             <div class="privacy" style="margin-top: 24px;">
@@ -652,12 +650,68 @@ fi
 echo "→ Pulling your transactions from Gmail (this can take ~30s)..."
 python3 src/gmail_fetcher.py
 
+# 7. Set up launchd auto-start so the dashboard runs in the background
+#    every time the Mac is logged in. No more "open Terminal first" each time.
+echo "→ Setting up auto-start at login..."
+
+LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
+PLIST_PATH="$LAUNCH_AGENTS_DIR/local.saviour.dashboard.plist"
+PYTHON_PATH=$(command -v python3)
+
+mkdir -p "$LAUNCH_AGENTS_DIR"
+mkdir -p "$INSTALL_DIR/data"
+
+# Stop any old Flask the user might have started manually before we hand
+# over control to launchd (avoids "address already in use" on port 5001).
+pkill -f "python.*saviour/src/app.py" 2>/dev/null || true
+sleep 1
+
+# Build the plist. Using a non-quoted heredoc so $HOME / $PYTHON_PATH /
+# $INSTALL_DIR expand to absolute paths embedded in the file itself.
+cat > "$PLIST_PATH" << PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.saviour.dashboard</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$PYTHON_PATH</string>
+        <string>$INSTALL_DIR/src/app.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>$INSTALL_DIR</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>$INSTALL_DIR/data/flask.log</string>
+    <key>StandardErrorPath</key>
+    <string>$INSTALL_DIR/data/flask.err.log</string>
+</dict>
+</plist>
+PLIST_EOF
+
+# Reload-safe: unload first (ignore errors if not loaded), then load fresh
+launchctl unload "$PLIST_PATH" 2>/dev/null || true
+launchctl load -w "$PLIST_PATH"
+
+# Give Flask a moment to bind port 5001
+sleep 2
+
 echo
-echo "✓ Saviour is installed!"
+echo "✓ Saviour is installed and auto-starts at login!"
 echo
-echo "To open the dashboard, run:"
-echo "    cd ~/saviour && python3 src/app.py"
-echo "Then visit http://localhost:5001 in your browser."
+echo "Open the dashboard now: http://localhost:5001"
+echo "(Bookmark it. From now on it'll be running in the background"
+echo " whenever your Mac is on.)"
 `;
 
         // Swap pre-generate card for done card
