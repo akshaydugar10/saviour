@@ -458,6 +458,30 @@ def dashboard():
         key=lambda t: -t["amount"],
     )
 
+    # ---- Monthly trend series (across ALL data, not just selected month) ----
+    # Same definition as the hero number: joint-account debits, excluding
+    # self-transfers and rejections. JS renders the SVG client-side so we
+    # ship raw numbers and let the user toggle ranges without a refresh.
+    monthly_totals: dict[str, float] = defaultdict(float)
+    for t in txns:
+        if (
+            t.get("account") == joint_account
+            and t.get("type") == "debit"
+            and not t.get("is_self_transfer")
+            and not t.get("is_rejected")
+        ):
+            ym = (t.get("date") or "")[:7]
+            if ym:
+                monthly_totals[ym] += t["amount"]
+    trend_series = [
+        {
+            "month": ym,
+            "label": datetime.strptime(ym, "%Y-%m").strftime("%b %y"),
+            "total": round(monthly_totals[ym], 2),
+        }
+        for ym in sorted(monthly_totals.keys())
+    ]
+
     return render_template(
         "dashboard.html",
         user_name=user["name"],
@@ -488,6 +512,8 @@ def dashboard():
         # Recategorize toast
         recat_to=recat_to,
         recat_key=recat_key,
+        # Monthly trend chart
+        trend_series=trend_series,
     )
 
 

@@ -446,6 +446,91 @@
         .recat-save:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
         .recat-cancel { color: var(--text-secondary); }
 
+        /* ============ MONTHLY TREND CHART ============ */
+        .trend-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .trend-head h2 { margin: 0; }
+        .trend-toggle {
+            display: inline-flex;
+            background: var(--bg-soft);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 0;
+        }
+        .trend-btn {
+            padding: 4px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .trend-btn:hover { background: transparent; color: var(--text-primary); }
+        .trend-btn.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+        #trend-chart-host {
+            width: 100%;
+            min-height: 240px;
+        }
+        .trend-svg { width: 100%; height: 240px; display: block; }
+        .trend-line {
+            stroke: var(--accent);
+            stroke-width: 2;
+            fill: none;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+        .trend-area {
+            fill: var(--accent);
+            opacity: 0.08;
+        }
+        .trend-dot {
+            fill: var(--bg-card);
+            stroke: var(--accent);
+            stroke-width: 2;
+        }
+        .trend-dot.current {
+            fill: var(--accent);
+        }
+        .trend-label {
+            fill: var(--text-secondary);
+            font-size: 11px;
+            font-family: inherit;
+        }
+        .trend-grid {
+            stroke: var(--border-faint);
+            stroke-width: 1;
+        }
+        .trend-budget-line {
+            stroke: var(--warning);
+            stroke-width: 1.5;
+            stroke-dasharray: 6 4;
+            opacity: 0.7;
+        }
+        .trend-budget-label {
+            fill: var(--warning);
+            font-size: 10px;
+            font-weight: 500;
+        }
+        .trend-empty {
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 14px;
+        }
+
         /* ============ TOAST ============ */
         .toast {
             position: fixed;
@@ -767,6 +852,22 @@
             </table>
         </div>
 
+        <!-- ============ MONTHLY TREND ============ -->
+        <div class="card card-trend">
+            <div class="trend-head">
+                <h2>Spending trend</h2>
+                <div class="trend-toggle" id="trend-toggle" role="tablist" aria-label="Range">
+                    <button type="button" class="trend-btn" data-range="3">3 months</button>
+                    <button type="button" class="trend-btn active" data-range="6">6 months</button>
+                    <button type="button" class="trend-btn" data-range="all">All</button>
+                </div>
+            </div>
+            <p class="subtle" style="margin: -4px 0 12px 0;">
+                Joint account 6755, real spending only (excludes self-transfers + rejected). Dashed line = ₹{{ "{:,}".format(budget) }} budget.
+            </p>
+            <div id="trend-chart-host"></div>
+        </div>
+
         <!-- ============ NEEDS REVIEW ============ -->
         {% if review %}
         <div class="card card-review">
@@ -893,6 +994,104 @@
             document.documentElement.setAttribute("data-theme", next);
             localStorage.setItem("saviour_theme", next);
         });
+
+        // ============ MONTHLY TREND CHART ============
+        const TREND_DATA = {{ trend_series | tojson }};
+        const TREND_BUDGET = {{ budget }};
+
+        function fmtINR(n) {
+            // Compact INR — "1.9 L", "85 K", etc. — for axis labels
+            if (n >= 100000) return "₹" + (n / 100000).toFixed(1).replace(/\.0$/, "") + "L";
+            if (n >= 1000) return "₹" + Math.round(n / 1000) + "K";
+            return "₹" + Math.round(n);
+        }
+
+        function renderTrend(range) {
+            const host = document.getElementById("trend-chart-host");
+            if (!host) return;
+            let data = TREND_DATA;
+            if (range !== "all") {
+                const n = parseInt(range, 10);
+                data = TREND_DATA.slice(-n);
+            }
+            if (data.length < 2) {
+                host.innerHTML = '<div class="trend-empty">Not enough months yet — sync a few times to see your trend.</div>';
+                return;
+            }
+
+            const W = 720, H = 240;
+            const padL = 50, padR = 20, padT = 24, padB = 30;
+            const innerW = W - padL - padR;
+            const innerH = H - padT - padB;
+
+            // Scale: include the budget line in the y-axis range so a flat-low
+            // line still has the budget visible above it
+            const maxVal = Math.max(...data.map(d => d.total), TREND_BUDGET) * 1.1;
+
+            const xScale = i => padL + (data.length === 1 ? innerW / 2 : (i / (data.length - 1)) * innerW);
+            const yScale = v => padT + innerH - (v / maxVal) * innerH;
+
+            // Gridlines at 0%, 25%, 50%, 75%, 100% of maxVal
+            const gridFractions = [0, 0.25, 0.5, 0.75, 1.0];
+            const gridLines = gridFractions.map(f => {
+                const v = maxVal * f;
+                const y = yScale(v);
+                return `
+                    <line class="trend-grid" x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}"/>
+                    <text class="trend-label" x="${padL - 8}" y="${y + 4}" text-anchor="end">${fmtINR(v)}</text>
+                `;
+            }).join("");
+
+            // Budget reference line (only if it fits inside the visible y-range)
+            let budgetLine = "";
+            if (TREND_BUDGET <= maxVal) {
+                const by = yScale(TREND_BUDGET);
+                budgetLine = `
+                    <line class="trend-budget-line" x1="${padL}" y1="${by}" x2="${W - padR}" y2="${by}"/>
+                    <text class="trend-budget-label" x="${W - padR}" y="${by - 6}" text-anchor="end">budget</text>
+                `;
+            }
+
+            // The line + the soft fill underneath it
+            const linePoints = data.map((d, i) => `${xScale(i)},${yScale(d.total)}`).join(" ");
+            const areaPoints = `${padL},${padT + innerH} ` + linePoints + ` ${xScale(data.length - 1)},${padT + innerH}`;
+
+            // Dots + month labels. Last point gets the "current" highlight.
+            const dots = data.map((d, i) => {
+                const cx = xScale(i);
+                const cy = yScale(d.total);
+                const cls = i === data.length - 1 ? "trend-dot current" : "trend-dot";
+                const pretty = "₹" + d.total.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+                return `<g><circle cx="${cx}" cy="${cy}" r="5" class="${cls}"/>
+                           <title>${d.label}: ${pretty}</title></g>`;
+            }).join("");
+
+            const labels = data.map((d, i) => {
+                return `<text class="trend-label" x="${xScale(i)}" y="${H - padB / 2 + 4}" text-anchor="middle">${d.label}</text>`;
+            }).join("");
+
+            host.innerHTML = `
+                <svg class="trend-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                    ${gridLines}
+                    ${budgetLine}
+                    <polygon class="trend-area" points="${areaPoints}"/>
+                    <polyline class="trend-line" points="${linePoints}"/>
+                    ${dots}
+                    ${labels}
+                </svg>
+            `;
+        }
+
+        document.querySelectorAll(".trend-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".trend-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                renderTrend(btn.dataset.range);
+            });
+        });
+
+        // Initial render — default 6 months
+        renderTrend("6");
 
         // Drilldown row "Move" button → reveal inline edit form below the row
         function rowEscapeKey(k) {
