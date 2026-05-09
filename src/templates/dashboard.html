@@ -1249,7 +1249,7 @@
             {
                 selector: null,
                 title: "👋 Welcome to Saviour",
-                body: "This dashboard shows where your money's going each month. Quick tour, takes ~30 seconds.",
+                body: "This dashboard shows where your money's going each month. Quick tour, ~45 seconds.",
             },
             {
                 selector: ".card.hero",
@@ -1270,22 +1270,34 @@
                 placement: "below",
             },
             {
+                selector: ".hist-trigger",
+                title: "Backfill historical months",
+                body: "Click 📅 to fetch a specific past month from Gmail — useful for adding history you haven't synced before. The dashboard auto-switches to that month after fetching.",
+                placement: "below",
+            },
+            {
                 selector: ".card-categories",
                 title: "Where your money goes",
-                body: "Categories ranked by spend. Click any row to see the individual transactions inside.",
+                body: "Categories ranked by spend. Click any row to expand it. Inside each drilldown, every transaction has a small Move button to recategorize just that one row (without changing the rule for similar transactions).",
+                placement: "above",
+            },
+            {
+                selector: ".card-trend",
+                title: "Spending over time",
+                body: "Your monthly total plotted across the last 3 / 6 / all months. The dashed line is your budget — anything above it was over-budget.",
                 placement: "above",
             },
             {
                 selector: ".card-review",
                 title: "Untagged transactions",
-                body: "Tick rows, type a category, click Save Selected. Saviour learns the rule and applies it to all matching past + future transactions automatically.",
+                body: "Tick rows, type a category, click Save Selected. Saviour creates a rule and applies it to all matching past + future transactions automatically.",
                 placement: "above",
                 optional: true,
             },
             {
                 selector: "#guide-btn",
                 title: "🎉 You're all set",
-                body: "Click 📘 Guide here to replay this tour any time.",
+                body: "Click 📘 Guide here to replay this tour any time. The ☀️/🌙 toggle next to it switches between light and dark mode — your choice persists.",
                 placement: "below",
             },
         ];
