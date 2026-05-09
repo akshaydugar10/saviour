@@ -480,6 +480,22 @@ def dashboard():
 
     top = sorted(real_spend, key=lambda t: -t["amount"])[:10]
 
+    # Credit card transactions for the selected month — all card debits,
+    # not just the ones that count toward joint. Compensated rows (those
+    # the matched-pair logic linked to a personal-reimbursement transfer)
+    # are still shown but tagged so the user knows they don't bloat joint.
+    cc_txns_month = sorted(
+        [t for t in txns_month
+         if t["account"] in card_set
+         and t["type"] == "debit"
+         and not t.get("is_rejected")],
+        key=lambda t: -t["amount"],
+    )
+    for t in cc_txns_month:
+        t["_compensated"] = t["_key"] in matched_cc_keys
+    cc_total = sum(t["amount"] for t in cc_txns_month)
+    cc_total_joint = sum(t["amount"] for t in cc_txns_month if not t["_compensated"])
+
     review = sorted(
         [t for t in real_spend if t["is_review_needed"]],
         key=lambda t: -t["amount"],
@@ -550,6 +566,10 @@ def dashboard():
         recat_to=recat_to,
         recat_key=recat_key,
         recat_amt=recat_amt,
+        # Credit card table
+        cc_txns=cc_txns_month,
+        cc_total=cc_total,
+        cc_total_joint=cc_total_joint,
         # Monthly trend chart
         trend_series=trend_series,
     )
